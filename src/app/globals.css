@@ -1,26 +1,119 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode */
+@custom-variant dark (&:is(.dark, .dark *));
+
+/* ── Light theme tokens ──────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-folder:       #f0ede8;
+  --bg-notes:        #f7f5f0;
+  --bg-editor:       #ffffff;
+  --bg-menu:         #e8e5e0;
+  --bg-toolbar:      #faf8f5;
+  --bg-hover:        #e0ddd8;
+  --bg-selected:     #f9e9c8;
+  --border:          #d8d5d0;
+  --border-light:    #e8e5e0;
+  --text-primary:    #1a1a1a;
+  --text-secondary:  #555555;
+  --text-muted:      #888888;
+  --text-faint:      #bbbbbb;
+  --accent:          #e8a020;
+  --accent-text:     #ffffff;
+  --scrollbar:       #cccccc;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Dark theme tokens ───────────────────────────────────── */
+.dark {
+  --bg-folder:       #2b2b2b;
+  --bg-notes:        #222222;
+  --bg-editor:       #1c1c1c;
+  --bg-menu:         #3a3a3a;
+  --bg-toolbar:      #252525;
+  --bg-hover:        #3d3d3d;
+  --bg-selected:     #3d2e0a;
+  --border:          #444444;
+  --border-light:    #383838;
+  --text-primary:    #e8e8e8;
+  --text-secondary:  #bbbbbb;
+  --text-muted:      #888888;
+  --text-faint:      #555555;
+  --accent:          #e8a020;
+  --accent-text:     #ffffff;
+  --scrollbar:       #555555;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg-editor);
+  color: var(--text-primary);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── TipTap ──────────────────────────────────────────────── */
+.ProseMirror {
+  min-height: 400px;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.ProseMirror p { margin: 0 0 0.4em; }
+.ProseMirror h1 { font-size: 26px; font-weight: 700; margin: 0.6em 0 0.2em; line-height: 1.2; }
+.ProseMirror h2 { font-size: 20px; font-weight: 600; margin: 0.5em 0 0.2em; }
+.ProseMirror h3 { font-size: 17px; font-weight: 600; margin: 0.4em 0 0.2em; }
+
+.ProseMirror ul { list-style-type: disc;    padding-left: 1.5em; margin: 0.25em 0 0.4em; }
+.ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; margin: 0.25em 0 0.4em; }
+.ProseMirror li { margin: 0.1em 0; }
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+/* Resizable image node wrapper */
+.resizable-image-wrapper {
+  display: block;
+  position: relative;
+  line-height: 0;
+  margin: 8px 0;
+}
+
+/* Drag-resize cursor during resize */
+.resizing { cursor: se-resize !important; user-select: none !important; }
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Panel resize handle ─────────────────────────────────── */
+.resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--border);
+  transition: background 0.15s;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.resize-handle:hover,
+.resize-handle.dragging {
+  background: var(--accent);
 }
