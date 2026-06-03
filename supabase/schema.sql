@@ -87,6 +87,17 @@ CREATE TABLE IF NOT EXISTS public.images (
 
 CREATE INDEX IF NOT EXISTS images_note_id_idx ON public.images(note_id);
 
+-- ─── Table grants ────────────────────────────────────────────────────────────
+-- RLS policies filter rows, but Postgres still requires explicit GRANT for the
+-- role to touch the table at all. Without these, authenticated users get 42501.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.folders  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.notes    TO authenticated;
+GRANT SELECT, INSERT, DELETE         ON public.images   TO authenticated;
+
+-- anon role needs SELECT on nothing sensitive, but Supabase expects it granted
+GRANT SELECT ON public.profiles TO anon;
+
 -- ─── Row Level Security ───────────────────────────────────────────────────────
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.folders  ENABLE ROW LEVEL SECURITY;
