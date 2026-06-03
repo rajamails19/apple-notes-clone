@@ -1,7 +1,7 @@
 // Re-export from the package's built-in FontSize
 export { FontSize } from '@tiptap/extension-text-style';
 
-export const FONT_SIZES = [10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64];
+export const FONT_SIZES = [10, 12, 14, 15, 16, 18, 20, 24, 28, 32, 40, 48, 64, 72, 96];
 export const DEFAULT_SIZE = 15;
 
 export function getNextSize(current: number | null, direction: 1 | -1): number {

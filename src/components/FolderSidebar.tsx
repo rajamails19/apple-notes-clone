@@ -2,21 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
+import { useContextMenu } from '@/store/useContextMenu';
 import { Folder } from '@/types';
 
 export default function FolderSidebar() {
   const { folders, selectedFolderId, setSelectedFolder, addFolder, updateFolder, removeFolder } = useStore();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; folder: Folder } | null>(null);
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editValue, setEditValue]   = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const { show: showCtx } = useContextMenu();
 
   useEffect(() => { if (editingId && inputRef.current) inputRef.current.focus(); }, [editingId]);
-  useEffect(() => {
-    const close = () => setContextMenu(null);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, []);
 
   async function createFolder() {
     const res = await fetch('/api/folders', {
@@ -42,7 +38,41 @@ export default function FolderSidebar() {
   async function deleteFolder(id: string) {
     await fetch(`/api/folders/${id}`, { method: 'DELETE' });
     removeFolder(id);
-    setContextMenu(null);
+  }
+
+  function handleRightClick(e: React.MouseEvent, folder: Folder) {
+    e.preventDefault();
+    showCtx(e.clientX, e.clientY, [
+      {
+        label: 'New Note', icon: '✏️',
+        action: async () => {
+          setSelectedFolder(folder.id);
+          const { addNote, incrementFolderCount } = useStore.getState();
+          const res = await fetch('/api/notes', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderId: folder.id }),
+          });
+          const note = await res.json();
+          addNote(note);
+          incrementFolderCount(folder.id);
+          useStore.getState().setSelectedNote(note.id);
+        },
+      },
+      {
+        label: 'New Folder', icon: '📁',
+        action: createFolder,
+      },
+      { separator: true },
+      {
+        label: 'Rename Folder', icon: '✏️',
+        action: () => { setEditingId(folder.id); setEditValue(folder.name); },
+      },
+      { separator: true },
+      {
+        label: 'Delete Folder', icon: '🗑', danger: true,
+        action: () => deleteFolder(folder.id),
+      },
+    ]);
   }
 
   return (
@@ -58,7 +88,7 @@ export default function FolderSidebar() {
         </span>
         <button
           onClick={createFolder}
-          title="New Folder"
+          title="New Folder (⌘⇧N)"
           style={{
             width: 22, height: 22, borderRadius: 5, border: 'none',
             background: 'transparent', color: 'var(--text-muted)',
@@ -72,8 +102,11 @@ export default function FolderSidebar() {
         </button>
       </div>
 
-      {/* List */}
+      {/* Folder list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '2px 6px 8px' }}>
+        {folders.length === 0 && (
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center', marginTop: 24 }}>No folders yet</p>
+        )}
         {folders.map((folder) => {
           const selected = folder.id === selectedFolderId;
           return (
@@ -81,16 +114,13 @@ export default function FolderSidebar() {
               key={folder.id}
               onClick={() => { if (editingId !== folder.id) setSelectedFolder(folder.id); }}
               onDoubleClick={() => { setEditingId(folder.id); setEditValue(folder.name); }}
-              onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, folder }); }}
+              onContextMenu={(e) => handleRightClick(e, folder)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                padding: '6px 10px',
-                borderRadius: 8,
-                cursor: 'pointer',
-                userSelect: 'none',
+                padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+                userSelect: 'none', marginBottom: 1,
                 background: selected ? 'var(--accent)' : 'transparent',
                 color: selected ? 'white' : 'var(--text-primary)',
-                marginBottom: 1,
               }}
               onMouseEnter={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
               onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -110,12 +140,11 @@ export default function FolderSidebar() {
                     if (e.key === 'Escape') setEditingId(null);
                   }}
                   onClick={(e) => e.stopPropagation()}
+                  data-no-ctx
                   style={{
-                    flex: 1, minWidth: 0,
-                    background: 'white', color: '#333',
-                    border: 'none', outline: 'none',
-                    borderRadius: 3, padding: '0 3px',
-                    fontSize: 13,
+                    flex: 1, minWidth: 0, background: 'white', color: '#333',
+                    border: 'none', outline: 'none', borderRadius: 3,
+                    padding: '0 3px', fontSize: 13,
                   }}
                 />
               ) : (
@@ -123,45 +152,15 @@ export default function FolderSidebar() {
                   <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {folder.name}
                   </span>
-                  <span style={{ fontSize: 11, opacity: 0.6 }}>{folder.noteCount ?? 0}</span>
+                  <span style={{ fontSize: 11, opacity: 0.6, minWidth: 16, textAlign: 'right' }}>
+                    {folder.noteCount ?? 0}
+                  </span>
                 </>
               )}
             </div>
           );
         })}
       </div>
-
-      {/* Context menu */}
-      {contextMenu && (
-        <div
-          style={{
-            position: 'fixed', zIndex: 100,
-            left: contextMenu.x, top: contextMenu.y,
-            background: 'white', border: '1px solid #ddd',
-            borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            padding: '4px 0', minWidth: 160,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => { setEditingId(contextMenu.folder.id); setEditValue(contextMenu.folder.name); setContextMenu(null); }}
-            style={{ width: '100%', textAlign: 'left', padding: '6px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f5f5f5'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
-          >
-            Rename Folder
-          </button>
-          <div style={{ borderTop: '1px solid #eee', margin: '3px 0' }} />
-          <button
-            onClick={() => deleteFolder(contextMenu.folder.id)}
-            style={{ width: '100%', textAlign: 'left', padding: '6px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#ef4444' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#fef2f2'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
-          >
-            Delete Folder
-          </button>
-        </div>
-      )}
     </div>
   );
 }

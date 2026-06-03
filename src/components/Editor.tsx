@@ -9,13 +9,16 @@ import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from '@/extensions/ResizableImage';
 import { useStore } from '@/store/useStore';
-import Toolbar from './Toolbar';
+import { useEditorContext } from '@/contexts/EditorContext';
+import { useContextMenu } from '@/store/useContextMenu';
 
 export default function NoteEditor() {
   const { notes, selectedNoteId, updateNote } = useStore();
   const note = notes.find((n) => n.id === selectedNoteId) ?? null;
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastNoteId = useRef<string | null>(null);
+  const { editorRef } = useEditorContext();
+  const { show: showCtx } = useContextMenu();
 
   const schedSave = useCallback((id: string, content: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -74,44 +77,65 @@ export default function NoteEditor() {
     },
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function uploadAndInsert(file: File, noteId: string, view: any) {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('noteId', noteId);
-    const res = await fetch('/api/images', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!data.url || !view) return;
-    const node = view.state.schema.nodes.image.create({ src: data.url });
-    view.dispatch(view.state.tr.replaceSelectionWith(node));
-  }
-
-  async function uploadImage(file: File, noteId: string): Promise<string> {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('noteId', noteId);
-    const res = await fetch('/api/images', { method: 'POST', body: fd });
-    const data = await res.json();
-    return data.url ?? '';
-  }
-
-  function handleImageInsert(file: File) {
-    if (!note?.id || !editor) return;
-    uploadImage(file, note.id).then((url) => {
-      if (url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: url } }).run();
-    });
-  }
+  // Register editor in context so TopBar can access it
+  useEffect(() => {
+    editorRef.current = editor;
+    return () => { editorRef.current = null; };
+  }, [editor, editorRef]);
 
   // Sync content when switching notes
   useEffect(() => {
     if (!editor || !note) return;
     if (lastNoteId.current === note.id) return;
     lastNoteId.current = note.id;
-    // Use setTimeout to avoid React batching issues
-    setTimeout(() => {
-      editor.commands.setContent(note.content || '');
-    }, 0);
+    setTimeout(() => editor.commands.setContent(note.content || ''), 0);
   }, [note?.id]);
+
+  // Editor area right-click menu
+  function handleEditorContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    const ed = editorRef.current;
+    showCtx(e.clientX, e.clientY, [
+      { label: 'Undo',       icon: '↩', shortcut: '⌘Z',   action: () => ed?.commands.undo() },
+      { label: 'Redo',       icon: '↪', shortcut: '⌘⇧Z',  action: () => ed?.commands.redo() },
+      { separator: true },
+      { label: 'Cut',        shortcut: '⌘X',  action: () => document.execCommand('cut') },
+      { label: 'Copy',       shortcut: '⌘C',  action: () => document.execCommand('copy') },
+      { label: 'Paste',      shortcut: '⌘V',  action: () => document.execCommand('paste') },
+      { separator: true },
+      { label: 'Select All', shortcut: '⌘A',  action: () => ed?.commands.selectAll() },
+      { separator: true },
+      {
+        label: 'Insert Image', icon: '🖼',
+        disabled: !note?.id,
+        action: () => {
+          const inp = document.createElement('input');
+          inp.type = 'file'; inp.accept = 'image/*';
+          inp.onchange = () => {
+            const file = inp.files?.[0];
+            if (!file || !note?.id) return;
+            const fd = new FormData();
+            fd.append('file', file); fd.append('noteId', note.id);
+            fetch('/api/images', { method: 'POST', body: fd })
+              .then((r) => r.json())
+              .then((d) => { if (d.url && ed) ed.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); });
+          };
+          inp.click();
+        },
+      },
+      { label: 'Highlight',  icon: '🖊', action: () => ed?.chain().focus().toggleHighlight().run() },
+    ]);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function uploadAndInsert(file: File, noteId: string, view: any) {
+    const fd = new FormData();
+    fd.append('file', file); fd.append('noteId', noteId);
+    const { url } = await fetch('/api/images', { method: 'POST', body: fd }).then((r) => r.json());
+    if (!url || !view) return;
+    const node = view.state.schema.nodes.image.create({ src: url });
+    view.dispatch(view.state.tr.replaceSelectionWith(node));
+  }
 
   async function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const title = e.target.value;
@@ -134,37 +158,40 @@ export default function NoteEditor() {
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         background: 'var(--bg-editor)', color: 'var(--text-faint)',
+        gap: 12,
       }}>
-        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={0.8} opacity={0.4}>
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={0.75} opacity={0.35}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
         </svg>
-        <p style={{ marginTop: 12, fontSize: 13 }}>Select a note or create a new one</p>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>No note selected</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-faint)' }}>Choose a note from the list or press ⌘N</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)', overflow: 'hidden' }}>
-      <Toolbar editor={editor} noteId={note.id} onImageInsert={handleImageInsert} />
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 48 }}>
-        <div style={{ padding: '28px 48px 12px' }}>
+      <div
+        style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}
+        onContextMenu={handleEditorContextMenu}
+      >
+        {/* Title */}
+        <div style={{ padding: '28px 52px 8px' }}>
           <input
             value={note.title}
             onChange={handleTitleChange}
             placeholder="Title"
             style={{
-              width: '100%',
-              fontSize: 26,
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontFamily: 'inherit',
+              width: '100%', fontSize: 26, fontWeight: 700,
+              color: 'var(--text-primary)', background: 'transparent',
+              border: 'none', outline: 'none', fontFamily: 'inherit',
             }}
           />
         </div>
-        <div style={{ padding: '0 48px' }}>
+        {/* Body */}
+        <div style={{ padding: '0 52px' }}>
           <EditorContent editor={editor} />
         </div>
       </div>

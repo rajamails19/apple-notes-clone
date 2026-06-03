@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from './ThemeProvider';
+import { useEditorContext } from '@/contexts/EditorContext';
 
 interface MenuItem {
   label?: string;
@@ -19,26 +20,26 @@ function MenuDropdown({ label, items, open, onOpen, onClose }: {
   return (
     <div style={{ position: 'relative' }}>
       <button
-        onClick={() => open ? onClose() : onOpen()}
+        onClick={() => (open ? onClose() : onOpen())}
         style={{
           padding: '2px 10px', fontSize: 13, borderRadius: 5, border: 'none',
           background: open ? '#3a82d0' : 'transparent',
           color: open ? 'white' : 'var(--text-primary)',
           cursor: 'pointer', fontFamily: 'inherit',
         }}
-        onMouseEnter={(e) => { if (!open) (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.08)'; }}
+        onMouseEnter={(e) => { if (!open) (e.currentTarget as HTMLElement).style.background = 'rgba(128,128,128,0.15)'; }}
         onMouseLeave={(e) => { if (!open) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
       >
         {label}
       </button>
-
       {open && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, marginTop: 2,
-          minWidth: 200, zIndex: 200,
+          minWidth: 210, zIndex: 300,
           background: 'var(--bg-menu)',
           border: '1px solid var(--border)',
-          borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          borderRadius: 10,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
           padding: '4px 0',
         }}>
           {items.map((item, i) =>
@@ -49,11 +50,12 @@ function MenuDropdown({ label, items, open, onOpen, onClose }: {
                 key={i}
                 onClick={() => { item.action?.(); onClose(); }}
                 style={{
-                  width: '100%', textAlign: 'left',
+                  width: 'calc(100% - 8px)', textAlign: 'left',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '5px 16px', background: 'none', border: 'none',
                   cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
                   color: item.danger ? '#ef4444' : 'var(--text-primary)',
+                  borderRadius: 5, margin: '0 4px',
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#3a82d0'; (e.currentTarget as HTMLElement).style.color = 'white'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = item.danger ? '#ef4444' : 'var(--text-primary)'; }}
@@ -72,12 +74,12 @@ function MenuDropdown({ label, items, open, onOpen, onClose }: {
 export default function MenuBar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
+  const { editorRef } = useEditorContext();
   const {
-    selectedFolderId, selectedNoteId,
+    selectedFolderId, selectedNoteId, notes, folders,
     addNote, removeNote, addFolder, removeFolder,
     toggleFolderSidebar, toggleNotesSidebar,
     incrementFolderCount, decrementFolderCount,
-    notes,
   } = useStore();
 
   useEffect(() => {
@@ -88,22 +90,21 @@ export default function MenuBar() {
 
   async function newNote() {
     if (!selectedFolderId) return;
-    const res = await fetch('/api/notes', {
+    const note = await fetch('/api/notes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folderId: selectedFolderId }),
-    });
-    const note = await res.json();
+    }).then((r) => r.json());
     addNote(note);
     incrementFolderCount(selectedFolderId);
     useStore.getState().setSelectedNote(note.id);
   }
 
   async function newFolder() {
-    const res = await fetch('/api/folders', {
+    const folder = await fetch('/api/folders', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'New Folder' }),
-    });
-    addFolder(await res.json());
+    }).then((r) => r.json());
+    addFolder(folder);
   }
 
   async function deleteNote() {
@@ -120,50 +121,70 @@ export default function MenuBar() {
     removeFolder(selectedFolderId);
   }
 
+  const ed = editorRef.current;
+
   const menus: { label: string; items: MenuItem[] }[] = [
     {
       label: 'File', items: [
-        { label: 'New Note', shortcut: '⌘N', action: newNote },
-        { label: 'New Folder', action: newFolder },
+        { label: 'New Note',    shortcut: '⌘N',   action: newNote },
+        { label: 'New Folder',  shortcut: '⌘⇧N',  action: newFolder },
         { separator: true },
-        { label: 'Delete Note', action: deleteNote, danger: true },
+        { label: 'Delete Note',   action: deleteNote,   danger: true },
         { label: 'Delete Folder', action: deleteFolder, danger: true },
       ],
     },
     {
       label: 'Edit', items: [
-        { label: 'Undo', shortcut: '⌘Z', action: () => document.execCommand('undo') },
-        { label: 'Redo', shortcut: '⌘⇧Z', action: () => document.execCommand('redo') },
+        { label: 'Undo',       shortcut: '⌘Z',   action: () => ed?.commands.undo() },
+        { label: 'Redo',       shortcut: '⌘⇧Z',  action: () => ed?.commands.redo() },
         { separator: true },
-        { label: 'Cut', shortcut: '⌘X', action: () => document.execCommand('cut') },
-        { label: 'Copy', shortcut: '⌘C', action: () => document.execCommand('copy') },
-        { label: 'Paste', shortcut: '⌘V', action: () => document.execCommand('paste') },
+        { label: 'Cut',        shortcut: '⌘X',   action: () => document.execCommand('cut') },
+        { label: 'Copy',       shortcut: '⌘C',   action: () => document.execCommand('copy') },
+        { label: 'Paste',      shortcut: '⌘V',   action: () => document.execCommand('paste') },
         { separator: true },
-        { label: 'Select All', shortcut: '⌘A', action: () => document.execCommand('selectAll') },
+        { label: 'Select All', shortcut: '⌘A',   action: () => ed?.commands.selectAll() },
+        { separator: true },
+        { label: 'Duplicate Note', shortcut: '⌘D', action: async () => {
+          if (!selectedNoteId) return;
+          const note = notes.find((n) => n.id === selectedNoteId);
+          if (!note) return;
+          const dup = await fetch('/api/notes', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
+          }).then((r) => r.json());
+          addNote(dup);
+          incrementFolderCount(note.folderId);
+          useStore.getState().setSelectedNote(dup.id);
+        }},
       ],
     },
     {
       label: 'Format', items: [
-        { label: 'Bold', shortcut: '⌘B', action: () => document.execCommand('bold') },
-        { label: 'Italic', shortcut: '⌘I', action: () => document.execCommand('italic') },
-        { label: 'Underline', shortcut: '⌘U', action: () => document.execCommand('underline') },
+        { label: 'Bold',       shortcut: '⌘B',  action: () => ed?.chain().focus().toggleBold().run() },
+        { label: 'Italic',     shortcut: '⌘I',  action: () => ed?.chain().focus().toggleItalic().run() },
+        { label: 'Underline',  shortcut: '⌘U',  action: () => ed?.chain().focus().toggleUnderline().run() },
         { separator: true },
-        { label: 'Increase Font Size', action: () => {} },
-        { label: 'Decrease Font Size', action: () => {} },
+        { label: 'Heading 1',  action: () => ed?.chain().focus().toggleHeading({ level: 1 }).run() },
+        { label: 'Heading 2',  action: () => ed?.chain().focus().toggleHeading({ level: 2 }).run() },
+        { separator: true },
+        { label: 'Bullet List',   action: () => ed?.chain().focus().toggleBulletList().run() },
+        { label: 'Numbered List', action: () => ed?.chain().focus().toggleOrderedList().run() },
+        { separator: true },
+        { label: 'Highlight', action: () => ed?.chain().focus().toggleHighlight().run() },
       ],
     },
     {
       label: 'View', items: [
         { label: 'Toggle Folder Sidebar', shortcut: '⌘⌥S', action: toggleFolderSidebar },
-        { label: 'Toggle Notes Sidebar', shortcut: '⌘⌥N', action: toggleNotesSidebar },
+        { label: 'Toggle Notes Sidebar',  shortcut: '⌘⌥N', action: toggleNotesSidebar },
         { separator: true },
         { label: '☀️  Light Mode', action: () => setTheme('light') },
-        { label: '🌙  Dark Mode', action: () => setTheme('dark') },
+        { label: '🌙  Dark Mode',  action: () => setTheme('dark') },
       ],
     },
     {
       label: 'Help', items: [
-        { label: 'About Notes', action: () => alert('Apple Notes Clone\nBuilt with Next.js 15, TipTap, SQLite') },
+        { label: 'About Notes', action: () => alert('Apple Notes Clone V2\nNext.js 15 · TipTap · SQLite') },
       ],
     },
   ];
@@ -175,8 +196,7 @@ export default function MenuBar() {
         padding: '3px 8px',
         background: 'var(--bg-menu)',
         borderBottom: '1px solid var(--border)',
-        userSelect: 'none',
-        flexShrink: 0,
+        userSelect: 'none', flexShrink: 0,
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -190,22 +210,6 @@ export default function MenuBar() {
           onClose={() => setOpenMenu(null)}
         />
       ))}
-
-      {/* Theme toggle button on right */}
-      <div style={{ flex: 1 }} />
-      <button
-        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 14, padding: '2px 6px', borderRadius: 5,
-          color: 'var(--text-secondary)',
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.08)'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
-      >
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
     </div>
   );
 }
