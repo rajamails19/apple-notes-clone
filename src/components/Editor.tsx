@@ -11,6 +11,7 @@ import { ResizableImage } from '@/extensions/ResizableImage';
 import { useStore } from '@/store/useStore';
 import { useEditorContext } from '@/contexts/EditorContext';
 import { useContextMenu } from '@/store/useContextMenu';
+import { useSyncStatus } from '@/store/useSyncStatus';
 
 export default function NoteEditor() {
   const { notes, selectedNoteId, updateNote } = useStore();
@@ -19,18 +20,25 @@ export default function NoteEditor() {
   const lastNoteId = useRef<string | null>(null);
   const { editorRef } = useEditorContext();
   const { show: showCtx } = useContextMenu();
+  const { setSyncing, setSaved, setError } = useSyncStatus();
 
   const schedSave = useCallback((id: string, content: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSyncing();
     saveTimer.current = setTimeout(async () => {
-      await fetch(`/api/notes/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      });
-      updateNote({ id, content, updatedAt: new Date().toISOString() });
+      try {
+        await fetch(`/api/notes/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        updateNote({ id, content, updatedAt: new Date().toISOString() });
+        setSaved();
+      } catch {
+        setError();
+      }
     }, 500);
-  }, [updateNote]);
+  }, [updateNote, setSyncing, setSaved, setError]);
 
   const editor = useEditor({
     immediatelyRender: false,

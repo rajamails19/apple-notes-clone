@@ -9,6 +9,7 @@ import FolderSidebar from './FolderSidebar';
 import NotesSidebar from './NotesSidebar';
 import NoteEditor from './Editor';
 import ContextMenu from './ContextMenu';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
 const MIN_FOLDER = 160;
 const MIN_NOTES  = 200;
@@ -29,6 +30,8 @@ export default function AppShell() {
     incrementFolderCount, decrementFolderCount,
     notes, folders,
   } = useStore();
+
+  useRealtimeSync();
 
   const [folderW, setFolderW] = useState(220);
   const [notesW,  setNotesW]  = useState(300);

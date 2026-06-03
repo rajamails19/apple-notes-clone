@@ -6,6 +6,8 @@ import { useTheme } from './ThemeProvider';
 import { useEditorContext } from '@/contexts/EditorContext';
 import { FONT_SIZES, DEFAULT_SIZE, getNextSize, parsePxSize } from '@/extensions/FontSize';
 import { ViewMode } from '@/types';
+import SyncStatus from './SyncStatus';
+import UserMenu from './auth/UserMenu';
 
 // ─── Small primitives ────────────────────────────────────────────────────────
 
@@ -278,6 +280,8 @@ export default function TopBar() {
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
+      <SyncStatus />
+
       {/* Theme toggle */}
       <button
         title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
@@ -292,6 +296,8 @@ export default function TopBar() {
       >
         {theme === 'light' ? '🌙' : '☀️'}
       </button>
+
+      <UserMenu />
     </div>
   );
 }

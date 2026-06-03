@@ -1,19 +1,48 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
+import { mapFolder } from '@/lib/supabase/types';
+
+const useSupabase = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 });
+
+  if (useSupabase()) {
+    const supabase = await createClient() as any; // eslint-disable-line
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data, error } = await supabase
+        .from('folders')
+        .update({ name: name.trim() })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      if (!error && data) return NextResponse.json(mapFolder(data));
+    }
+  }
+
+  const { getDb } = await import('@/lib/db');
   const db = getDb();
   db.prepare('UPDATE folders SET name = ? WHERE id = ?').run(name.trim(), id);
-  const folder = db.prepare('SELECT * FROM folders WHERE id = ?').get(id);
-  return NextResponse.json(folder);
+  return NextResponse.json(db.prepare('SELECT * FROM folders WHERE id = ?').get(id));
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = getDb();
-  db.prepare('DELETE FROM folders WHERE id = ?').run(id);
+
+  if (useSupabase()) {
+    const supabase = await createClient() as any; // eslint-disable-line
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('folders').delete().eq('id', id).eq('user_id', user.id);
+      return NextResponse.json({ success: true });
+    }
+  }
+
+  const { getDb } = await import('@/lib/db');
+  getDb().prepare('DELETE FROM folders WHERE id = ?').run(id);
   return NextResponse.json({ success: true });
 }
