@@ -10,11 +10,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data, error } = await supabase.from('notes').select('*').eq('id', id).eq('user_id', user.id).single();
-      if (error) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      return NextResponse.json(mapNote(data));
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data, error } = await supabase.from('notes').select('*').eq('id', id).eq('user_id', user.id).single();
+    if (error) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(mapNote(data));
   }
 
   const { getDb } = await import('@/lib/db');
@@ -30,24 +30,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const update: Record<string, unknown> = {};
-      if (body.title     !== undefined) update.title     = body.title;
-      if (body.content   !== undefined) update.content   = body.content;
-      if (body.folderId  !== undefined) update.folder_id = body.folderId;
-      if (body.pinned    !== undefined) update.pinned    = body.pinned === 1;
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-      const { data, error } = await supabase
-        .from('notes')
-        .update(update)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      if (!error && data) return NextResponse.json(mapNote(data));
+    const update: Record<string, unknown> = {};
+    if (body.title    !== undefined) update.title     = body.title;
+    if (body.content  !== undefined) update.content   = body.content;
+    if (body.folderId !== undefined) update.folder_id = body.folderId;
+    if (body.pinned   !== undefined) update.pinned    = body.pinned === 1;
+
+    const { data, error } = await supabase
+      .from('notes')
+      .update(update)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[notes PATCH] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json(mapNote(data));
   }
 
+  // Local-only
   const { getDb } = await import('@/lib/db');
   const db  = getDb();
   const now = new Date().toISOString();
@@ -70,10 +76,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('notes').delete().eq('id', id).eq('user_id', user.id);
-      return NextResponse.json({ success: true });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { error } = await supabase.from('notes').delete().eq('id', id).eq('user_id', user.id);
+    if (error) {
+      console.error('[notes DELETE] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json({ success: true });
   }
 
   const { getDb } = await import('@/lib/db');

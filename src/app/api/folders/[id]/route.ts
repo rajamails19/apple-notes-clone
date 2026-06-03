@@ -12,16 +12,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data, error } = await supabase
-        .from('folders')
-        .update({ name: name.trim() })
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      if (!error && data) return NextResponse.json(mapFolder(data));
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data, error } = await supabase
+      .from('folders')
+      .update({ name: name.trim() })
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[folders PATCH] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json(mapFolder(data));
   }
 
   const { getDb } = await import('@/lib/db');
@@ -36,10 +41,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('folders').delete().eq('id', id).eq('user_id', user.id);
-      return NextResponse.json({ success: true });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { error } = await supabase.from('folders').delete().eq('id', id).eq('user_id', user.id);
+    if (error) {
+      console.error('[folders DELETE] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json({ success: true });
   }
 
   const { getDb } = await import('@/lib/db');

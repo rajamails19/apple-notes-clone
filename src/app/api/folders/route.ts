@@ -7,39 +7,40 @@ const useSupabase = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env
 
 export async function GET() {
   if (useSupabase()) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = await createClient() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: folders, error } = await supabase
-        .from('folders')
-        .select('*, notes(count)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-      if (!error && folders) {
-        return NextResponse.json(
-          (folders as Array<Record<string, unknown>>).map((f) => {
-            const noteArr = f.notes as unknown as Array<{ count: number }>;
-            const count = noteArr?.[0]?.count ?? 0;
-            return { ...mapFolder(f as Parameters<typeof mapFolder>[0]), noteCount: count };
-          })
-        );
-      }
+    const { data: folders, error } = await supabase
+      .from('folders')
+      .select('*, notes(count)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[folders GET] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    return NextResponse.json(
+      (folders ?? []).map((f: Record<string, unknown>) => {
+        const noteArr = f.notes as unknown as Array<{ count: number }>;
+        const count = noteArr?.[0]?.count ?? 0;
+        return { ...mapFolder(f as Parameters<typeof mapFolder>[0]), noteCount: count };
+      })
+    );
   }
 
-  // SQLite fallback
+  // Local-only
   const { getDb } = await import('@/lib/db');
   const db = getDb();
-  const rows = db.prepare(`
+  return NextResponse.json(db.prepare(`
     SELECT f.*, COUNT(n.id) as noteCount
     FROM folders f
     LEFT JOIN notes n ON n.folderId = f.id
     GROUP BY f.id
     ORDER BY f.createdAt ASC
-  `).all();
-  return NextResponse.json(rows);
+  `).all());
 }
 
 export async function POST(req: Request) {
@@ -49,16 +50,22 @@ export async function POST(req: Request) {
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data, error } = await supabase
-        .from('folders')
-        .insert({ id: uuidv4(), name: name.trim(), user_id: user.id })
-        .select()
-        .single();
-      if (!error && data) return NextResponse.json({ ...mapFolder(data), noteCount: 0 });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data, error } = await supabase
+      .from('folders')
+      .insert({ id: uuidv4(), name: name.trim(), user_id: user.id })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[folders POST] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json({ ...mapFolder(data), noteCount: 0 });
   }
 
+  // Local-only
   const { getDb } = await import('@/lib/db');
   const db = getDb();
   const folder = { id: uuidv4(), name: name.trim(), createdAt: new Date().toISOString() };

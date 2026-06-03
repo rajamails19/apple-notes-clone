@@ -13,22 +13,27 @@ export async function GET(req: Request) {
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      let query = supabase
-        .from('notes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('pinned', { ascending: false })
-        .order('updated_at', { ascending: false });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-      if (folderId) query = query.eq('folder_id', folderId);
-      if (search)   query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+    let query = supabase
+      .from('notes')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('pinned', { ascending: false })
+      .order('updated_at', { ascending: false });
 
-      const { data, error } = await query;
-      if (!error && data) return NextResponse.json(data.map(mapNote));
+    if (folderId) query = query.eq('folder_id', folderId);
+    if (search)   query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('[notes GET] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json((data ?? []).map(mapNote));
   }
 
+  // Local-only (no Supabase configured)
   const { getDb } = await import('@/lib/db');
   const db = getDb();
   let sql = 'SELECT * FROM notes WHERE 1=1';
@@ -46,16 +51,22 @@ export async function POST(req: Request) {
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data, error } = await supabase
-        .from('notes')
-        .insert({ id: uuidv4(), folder_id: folderId, title, content, pinned: pinned === 1, user_id: user.id })
-        .select()
-        .single();
-      if (!error && data) return NextResponse.json(mapNote(data));
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({ id: uuidv4(), folder_id: folderId, title, content, pinned: pinned === 1, user_id: user.id })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[notes POST] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    return NextResponse.json(mapNote(data));
   }
 
+  // Local-only
   const { getDb } = await import('@/lib/db');
   const db = getDb();
   const now = new Date().toISOString();
