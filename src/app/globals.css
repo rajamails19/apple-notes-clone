@@ -136,3 +136,18 @@ button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* ── Mobile UX ───────────────────────────────────────────── */
+/* Remove tap highlight flash on mobile */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Hide scrollbar on mobile toolbar while keeping scroll */
+.mobile-toolbar::-webkit-scrollbar { display: none; }
+.mobile-toolbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Ensure inputs/buttons have minimum 44px tap target */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom on focus */
+  button { min-height: 44px; }
+  .ProseMirror { padding: 16px !important; }
+}

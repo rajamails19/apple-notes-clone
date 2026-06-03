@@ -22,6 +22,30 @@ function loadW(key: string, def: number) {
   return isNaN(v) ? def : v;
 }
 
+// ─── Mobile nav state ─────────────────────────────────────────────────────────
+// 'folders' | 'notes' | 'editor'
+type MobilePanel = 'folders' | 'notes' | 'editor';
+
+// ─── Back arrow SVG ───────────────────────────────────────────────────────────
+function BackArrow() {
+  return (
+    <svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1L1.5 7.5L8 14" />
+    </svg>
+  );
+}
+
+// ─── Hamburger SVG ────────────────────────────────────────────────────────────
+function Hamburger() {
+  return (
+    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+      <line x1="0" y1="1" x2="18" y2="1" />
+      <line x1="0" y1="7" x2="18" y2="7" />
+      <line x1="0" y1="13" x2="18" y2="13" />
+    </svg>
+  );
+}
+
 export default function AppShell() {
   const {
     setFolders, setNotes, selectedFolderId,
@@ -38,6 +62,17 @@ export default function AppShell() {
   const dragging = useRef<null | 'folder' | 'notes'>(null);
   const startX   = useRef(0);
   const startW   = useRef(0);
+
+  // Mobile: which panel is currently shown
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('folders');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Hydrate widths from localStorage after mount
   useEffect(() => {
@@ -68,26 +103,42 @@ export default function AppShell() {
     else setNotes([]);
   }, [selectedFolderId]);
 
+  // On mobile: selecting a folder → go to notes panel
+  const originalSetSelectedFolder = useStore.getState().setSelectedFolder;
+  const handleFolderSelect = useCallback((id: string) => {
+    useStore.getState().setSelectedFolder(id);
+    if (isMobile) setMobilePanel('notes');
+  }, [isMobile]);
+
+  // On mobile: selecting a note → go to editor panel
+  const handleNoteSelect = useCallback((id: string) => {
+    useStore.getState().setSelectedNote(id);
+    if (isMobile) setMobilePanel('editor');
+  }, [isMobile]);
+
+  // On mobile: new note → go to editor
+  const handleNewNote = useCallback(async () => {
+    const fid = useStore.getState().selectedFolderId;
+    if (!fid) return;
+    const note = await fetch('/api/notes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderId: fid }),
+    }).then((r) => r.json());
+    addNote(note);
+    incrementFolderCount(fid);
+    setSelectedNote(note.id);
+    if (isMobile) setMobilePanel('editor');
+  }, [isMobile, addNote, incrementFolderCount, setSelectedNote]);
+
   // Global keyboard shortcuts
   useEffect(() => {
     async function onKey(e: KeyboardEvent) {
       const meta = e.metaKey || e.ctrlKey;
 
-      // ⌘N — new note
       if (meta && !e.shiftKey && e.key === 'n') {
         e.preventDefault();
-        const fid = useStore.getState().selectedFolderId;
-        if (!fid) return;
-        const note = await fetch('/api/notes', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderId: fid }),
-        }).then((r) => r.json());
-        addNote(note);
-        incrementFolderCount(fid);
-        setSelectedNote(note.id);
+        await handleNewNote();
       }
-
-      // ⌘⇧N — new folder
       if (meta && e.shiftKey && e.key === 'n') {
         e.preventDefault();
         const folder = await fetch('/api/folders', {
@@ -96,8 +147,6 @@ export default function AppShell() {
         }).then((r) => r.json());
         useStore.getState().addFolder(folder);
       }
-
-      // ⌘D — duplicate note
       if (meta && e.key === 'd') {
         e.preventDefault();
         const { selectedNoteId, notes: ns, addNote: an, incrementFolderCount: inc } = useStore.getState();
@@ -111,17 +160,11 @@ export default function AppShell() {
         inc(note.folderId);
         setSelectedNote(dup.id);
       }
-
-      // ⌘F — focus search
       if (meta && e.key === 'f') {
         e.preventDefault();
         document.querySelector<HTMLInputElement>('input[placeholder="Search"]')?.focus();
       }
-
-      // ⌘S — no-op (auto-save)
       if (meta && e.key === 's') e.preventDefault();
-
-      // Delete key — delete selected note (only when editor not focused)
       if (e.key === 'Delete' && !meta) {
         const active = document.activeElement;
         if (active?.closest('.ProseMirror') || active?.tagName === 'INPUT') return;
@@ -136,9 +179,9 @@ export default function AppShell() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [handleNewNote]);
 
-  // Panel drag
+  // Panel drag (desktop only)
   const onMouseDownDrag = (pane: 'folder' | 'notes') => (e: React.MouseEvent) => {
     dragging.current = pane;
     startX.current   = e.clientX;
@@ -173,39 +216,162 @@ export default function AppShell() {
     };
   }, []);
 
+  // ─── Mobile header bar ─────────────────────────────────────────────────────
+  const selectedFolder = folders.find((f) => f.id === selectedFolderId);
+  const selectedNote   = notes.find((n) => n.id === useStore.getState().selectedNoteId);
+
+  const mobileNavBar = isMobile ? (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 4,
+      padding: '0 8px', height: 48, flexShrink: 0,
+      background: 'var(--bg-toolbar)',
+      borderBottom: '1px solid var(--border)',
+    }}>
+      {/* Back button */}
+      {mobilePanel !== 'folders' && (
+        <button
+          onClick={() => setMobilePanel(mobilePanel === 'editor' ? 'notes' : 'folders')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--accent)', fontSize: 15, fontWeight: 500,
+            padding: '0 6px', minHeight: 44, minWidth: 44,
+          }}
+        >
+          <BackArrow />
+          <span>{mobilePanel === 'editor' ? (selectedFolder?.name ?? 'Notes') : 'Folders'}</span>
+        </button>
+      )}
+
+      {/* Hamburger on folder panel */}
+      {mobilePanel === 'folders' && (
+        <button
+          onClick={() => {}} // no-op; folders IS the root
+          style={{
+            background: 'none', border: 'none', cursor: 'default',
+            color: 'var(--text-muted)', padding: '0 6px', minHeight: 44,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <Hamburger />
+        </button>
+      )}
+
+      {/* Title */}
+      <span style={{
+        flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 600,
+        color: 'var(--text-primary)', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {mobilePanel === 'folders' && 'Folders'}
+        {mobilePanel === 'notes'   && (selectedFolder?.name ?? 'Notes')}
+        {mobilePanel === 'editor'  && (selectedNote?.title   || 'Note')}
+      </span>
+
+      {/* New note button (notes + editor panels) */}
+      {mobilePanel !== 'folders' && (
+        <button
+          onClick={handleNewNote}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--accent)', minHeight: 44, minWidth: 44,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  // ─── Desktop layout ────────────────────────────────────────────────────────
+  if (!isMobile) {
+    return (
+      <EditorProvider>
+        <div
+          id="app-shell"
+          style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-editor)' }}
+        >
+          <MenuBar />
+          <TopBar />
+
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            {showFolderSidebar && (
+              <>
+                <div style={{ width: folderW, flexShrink: 0, overflow: 'hidden' }}>
+                  <FolderSidebar />
+                </div>
+                <div className="resize-handle" onMouseDown={onMouseDownDrag('folder')} />
+              </>
+            )}
+
+            {showNotesSidebar && (
+              <>
+                <div style={{ width: notesW, flexShrink: 0, overflow: 'hidden' }}>
+                  <NotesSidebar />
+                </div>
+                <div className="resize-handle" onMouseDown={onMouseDownDrag('notes')} />
+              </>
+            )}
+
+            <NoteEditor />
+          </div>
+        </div>
+        <ContextMenu />
+      </EditorProvider>
+    );
+  }
+
+  // ─── Mobile layout ─────────────────────────────────────────────────────────
   return (
     <EditorProvider>
       <div
         id="app-shell"
-        style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-editor)' }}
+        style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--bg-editor)' }}
       >
-        <MenuBar />
-        <TopBar />
+        {/* Mobile nav bar replaces MenuBar + TopBar on folders/notes panels */}
+        {mobilePanel !== 'editor' ? (
+          mobileNavBar
+        ) : (
+          <>
+            {mobileNavBar}
+            {/* Scrollable formatting toolbar on editor panel */}
+            <TopBar mobile />
+          </>
+        )}
 
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {showFolderSidebar && (
-            <>
-              <div style={{ width: folderW, flexShrink: 0, overflow: 'hidden' }}>
-                <FolderSidebar />
-              </div>
-              <div className="resize-handle" onMouseDown={onMouseDownDrag('folder')} />
-            </>
-          )}
+        {/* Panels — one visible at a time */}
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          {/* Folders panel */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: mobilePanel === 'folders' ? 'flex' : 'none',
+            flexDirection: 'column', overflow: 'hidden',
+          }}>
+            <FolderSidebar onSelectFolder={(id) => { handleFolderSelect(id); }} mobile />
+          </div>
 
-          {showNotesSidebar && (
-            <>
-              <div style={{ width: notesW, flexShrink: 0, overflow: 'hidden' }}>
-                <NotesSidebar />
-              </div>
-              <div className="resize-handle" onMouseDown={onMouseDownDrag('notes')} />
-            </>
-          )}
+          {/* Notes panel */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: mobilePanel === 'notes' ? 'flex' : 'none',
+            flexDirection: 'column', overflow: 'hidden',
+          }}>
+            <NotesSidebar onSelectNote={(id) => { handleNoteSelect(id); }} mobile />
+          </div>
 
-          <NoteEditor />
+          {/* Editor panel */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: mobilePanel === 'editor' ? 'flex' : 'none',
+            flexDirection: 'column', overflow: 'hidden',
+          }}>
+            <NoteEditor />
+          </div>
         </div>
       </div>
-
-      {/* Global context menu portal */}
       <ContextMenu />
     </EditorProvider>
   );

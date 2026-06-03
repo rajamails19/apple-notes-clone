@@ -19,12 +19,15 @@ function stripHtml(html: string) {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export default function NotesSidebar() {
+export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolean; onSelectNote?: (id: string) => void } = {}) {
   const {
     notes, selectedFolderId, selectedNoteId, searchQuery, folders, viewMode,
     setSelectedNote, setSearchQuery, addNote, removeNote,
     incrementFolderCount, decrementFolderCount, pinNote, moveNote,
   } = useStore();
+
+  // Wrap setSelectedNote to also call the mobile callback
+  const handleSelect = (id: string) => { setSelectedNote(id); onSelectNote?.(id); };
 
   const { show: showCtx } = useContextMenu();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -211,7 +214,7 @@ export default function NotesSidebar() {
           <GalleryNotes
             notes={filtered}
             selectedId={selectedNoteId}
-            onSelect={setSelectedNote}
+            onSelect={handleSelect}
             onContextMenu={onNoteCtxMenu}
           />
         ) : (
@@ -222,7 +225,7 @@ export default function NotesSidebar() {
                 <SectionLabel label="Pinned" />
                 {pinnedNotes.map((note) => (
                   <NoteRow key={note.id} note={note} selected={note.id === selectedNoteId}
-                    onSelect={() => setSelectedNote(note.id)}
+                    onSelect={() => handleSelect(note.id)}
                     onContextMenu={(e) => onNoteCtxMenu(e, note)}
                     onDelete={() => handleDeleteNote(note)}
                   />
@@ -234,7 +237,7 @@ export default function NotesSidebar() {
             {/* Regular notes */}
             {regularNotes.map((note) => (
               <NoteRow key={note.id} note={note} selected={note.id === selectedNoteId}
-                onSelect={() => setSelectedNote(note.id)}
+                onSelect={() => handleSelect(note.id)}
                 onContextMenu={(e) => onNoteCtxMenu(e, note)}
                 onDelete={() => handleDeleteNote(note)}
               />
@@ -271,7 +274,8 @@ function NoteRow({ note, selected, onSelect, onContextMenu, onDelete }: {
       onClick={onSelect}
       onContextMenu={onContextMenu}
       style={{
-        position: 'relative', padding: '10px 14px',
+        position: 'relative', padding: '12px 14px',
+        minHeight: 56,
         cursor: 'pointer',
         borderBottom: '1px solid var(--border-light)',
         background: selected ? 'var(--bg-selected)' : 'transparent',

@@ -5,7 +5,7 @@ import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
 import { Folder } from '@/types';
 
-export default function FolderSidebar() {
+export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boolean; onSelectFolder?: (id: string) => void } = {}) {
   const { folders, selectedFolderId, setSelectedFolder, addFolder, updateFolder, removeFolder } = useStore();
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [editValue, setEditValue]   = useState('');
@@ -112,12 +112,14 @@ export default function FolderSidebar() {
           return (
             <div
               key={folder.id}
-              onClick={() => { if (editingId !== folder.id) setSelectedFolder(folder.id); }}
+              onClick={() => { if (editingId !== folder.id) { setSelectedFolder(folder.id); onSelectFolder?.(folder.id); } }}
               onDoubleClick={() => { setEditingId(folder.id); setEditValue(folder.name); }}
               onContextMenu={(e) => handleRightClick(e, folder)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+                padding: mobile ? '12px 12px' : '6px 10px',
+                minHeight: mobile ? 48 : undefined,
+                borderRadius: 8, cursor: 'pointer',
                 userSelect: 'none', marginBottom: 1,
                 background: selected ? 'var(--accent)' : 'transparent',
                 color: selected ? 'white' : 'var(--text-primary)',

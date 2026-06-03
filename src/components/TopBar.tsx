@@ -146,7 +146,7 @@ function FontSizeControl({ editor }: { editor: ReturnType<typeof useEditorContex
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
 
-export default function TopBar() {
+export default function TopBar({ mobile }: { mobile?: boolean }) {
   const {
     selectedFolderId, selectedNoteId, notes,
     addNote, removeNote, incrementFolderCount, decrementFolderCount,
@@ -181,33 +181,42 @@ export default function TopBar() {
   return (
     <div style={{
       display: 'flex', alignItems: 'center',
-      padding: '5px 12px', gap: 6,
+      padding: mobile ? '4px 8px' : '5px 12px',
+      gap: mobile ? 2 : 6,
       background: 'var(--bg-toolbar)',
       borderBottom: '1px solid var(--border)',
       flexShrink: 0, flexWrap: 'nowrap',
-      minHeight: 42,
-    }}>
-      {/* Left — view mode */}
-      <ViewToggle />
+      minHeight: mobile ? 44 : 42,
+      // On mobile: horizontally scrollable, no wrapping
+      overflowX: mobile ? 'auto' : 'visible',
+      overflowY: 'hidden',
+      WebkitOverflowScrolling: 'touch',
+      scrollbarWidth: 'none',
+    } as React.CSSProperties}>
+      {/* Left — view mode (desktop only) */}
+      {!mobile && <ViewToggle />}
+      {!mobile && <Sep />}
 
-      <Sep />
+      {/* Note actions (hide on mobile — handled by nav bar) */}
+      {!mobile && (
+        <>
+          <TBtn title="Delete Note" onClick={deleteNote} disabled={noNote} danger>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" />
+            </svg>
+            <span style={{ fontSize: 12 }}>Delete</span>
+          </TBtn>
 
-      {/* Center — note actions */}
-      <TBtn title="Delete Note" onClick={deleteNote} disabled={noNote} danger>
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" />
-        </svg>
-        <span style={{ fontSize: 12 }}>Delete</span>
-      </TBtn>
+          <TBtn title="New Note (⌘N)" onClick={newNote} disabled={noFolder}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            <span style={{ fontSize: 12 }}>New Note</span>
+          </TBtn>
 
-      <TBtn title="New Note (⌘N)" onClick={newNote} disabled={noFolder}>
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-        </svg>
-        <span style={{ fontSize: 12 }}>New Note</span>
-      </TBtn>
-
-      <Sep />
+          <Sep />
+        </>
+      )}
 
       {/* Right — formatting */}
       <FontSizeControl editor={editor} />
@@ -277,27 +286,27 @@ export default function TopBar() {
         </TBtn>
       </label>
 
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
-
-      <SyncStatus />
-
-      {/* Theme toggle */}
-      <button
-        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 16, padding: '4px 6px', borderRadius: 6,
-          color: 'var(--text-muted)',
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
-      >
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
-
-      <UserMenu />
+      {/* Spacer + right-side controls (desktop only) */}
+      {!mobile && (
+        <>
+          <div style={{ flex: 1 }} />
+          <SyncStatus />
+          <button
+            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 16, padding: '4px 6px', borderRadius: 6,
+              color: 'var(--text-muted)',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+          <UserMenu />
+        </>
+      )}
     </div>
   );
 }
