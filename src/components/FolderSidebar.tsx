@@ -104,7 +104,7 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
       </div>
 
       {/* Folder list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2px 6px 8px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '2px 6px 8px', display: 'flex', flexDirection: 'column' }}>
         {folders.length === 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center', marginTop: 24 }}>No folders yet</p>
         )}
@@ -163,7 +163,52 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
             </div>
           );
         })}
+        {/* Spacer pushes card to bottom */}
+        <div style={{ flex: 1 }} />
+        <BrandCard />
       </div>
+    </div>
+  );
+}
+
+function BrandCard() {
+  return (
+    <div style={{
+      margin: '12px 4px 8px',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, rgba(232,160,32,0.10) 0%, rgba(232,100,60,0.08) 100%)',
+      border: '1px solid rgba(232,160,32,0.20)',
+      padding: '12px 12px 10px',
+      userSelect: 'none',
+    }}>
+      {/* Avatar + title row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
+        {/* Gradient avatar */}
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+          background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 2px 8px rgba(232,160,32,0.35)',
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-0.5px' }}>R</span>
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1 }}>
+            Noteva
+          </p>
+          <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1 }}>
+            Made with <span style={{ color: '#e8402a' }}>♥</span> by Raja
+          </p>
+        </div>
+      </div>
+
+      {/* Tagline */}
+      <p style={{
+        margin: 0, fontSize: 10.5, lineHeight: 1.4,
+        color: 'var(--text-muted)',
+      }}>
+        Your thoughts, beautifully organized — fast, private & always in sync.
+      </p>
     </div>
   );
 }
