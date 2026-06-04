@@ -9,7 +9,7 @@ import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from '@/extensions/ResizableImage';
 import { useStore } from '@/store/useStore';
-import { useEditorContext } from '@/contexts/EditorContext';
+import { useEditorStore } from '@/store/useEditorStore';
 import { useContextMenu } from '@/store/useContextMenu';
 import { useSyncStatus } from '@/store/useSyncStatus';
 
@@ -18,7 +18,8 @@ export default function NoteEditor() {
   const note = notes.find((n) => n.id === selectedNoteId) ?? null;
   const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastNoteId = useRef<string | null>(null);
-  const { editorRef, setEditor } = useEditorContext();
+  const setEditor = useEditorStore((s) => s.setEditor);
+  const editorRef = useRef<import('@tiptap/react').Editor | null>(null);
   const { show: showCtx } = useContextMenu();
   const { setSyncing, setSaved, setError } = useSyncStatus();
 
@@ -52,6 +53,8 @@ export default function NoteEditor() {
       Placeholder.configure({ placeholder: 'Start writing…' }),
     ],
     content: note?.content ?? '',
+    onCreate: ({ editor: e }) => { setEditor(e); },
+    onDestroy: () => { setEditor(null); },
     editorProps: {
       attributes: { class: 'ProseMirror' },
       handleDrop(view, event) {
@@ -85,10 +88,14 @@ export default function NoteEditor() {
     },
   });
 
-  // Register editor in context so TopBar can access it reactively
+  // Register editor in Zustand store so TopBar can access it reactively
   useEffect(() => {
+    editorRef.current = editor;
     setEditor(editor);
-    return () => { setEditor(null); };
+    return () => {
+      editorRef.current = null;
+      setEditor(null);
+    };
   }, [editor, setEditor]);
 
   // Sync content when switching notes

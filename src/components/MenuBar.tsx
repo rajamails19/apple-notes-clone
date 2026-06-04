@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from './ThemeProvider';
-import { useEditorContext } from '@/contexts/EditorContext';
+import { useEditorStore } from '@/store/useEditorStore';
 
 interface MenuItem {
   label?: string;
@@ -74,7 +74,7 @@ function MenuDropdown({ label, items, open, onOpen, onClose }: {
 export default function MenuBar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
-  const { editorRef } = useEditorContext();
+  const getEditor = () => useEditorStore.getState().editor;
   const {
     selectedFolderId, selectedNoteId, notes, folders,
     addNote, removeNote, addFolder, removeFolder,
@@ -121,7 +121,7 @@ export default function MenuBar() {
     removeFolder(selectedFolderId);
   }
 
-  const ed = editorRef.current;
+  const ed = getEditor();
 
   const menus: { label: string; items: MenuItem[] }[] = [
     {

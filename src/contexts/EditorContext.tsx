@@ -23,6 +23,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const setEditor = useCallback((e: Editor | null) => {
     editorRef.current = e;
     setEditorState(e);
+    if (typeof window !== 'undefined') console.log('[EditorContext] setEditor:', e ? 'ready' : 'null');
   }, []);
 
   return (

@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from './ThemeProvider';
-import { useEditorContext } from '@/contexts/EditorContext';
+import { useEditorStore } from '@/store/useEditorStore';
 import type { Editor } from '@tiptap/react';
 import { FONT_SIZES, DEFAULT_SIZE, parsePxSize } from '@/extensions/FontSize';
 import { ViewMode } from '@/types';
@@ -301,7 +301,7 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
     addNote, removeNote, incrementFolderCount, decrementFolderCount,
   } = useStore();
   const { theme, setTheme } = useTheme();
-  const { editor } = useEditorContext(); // reactive — re-renders when editor mounts
+  const editor = useEditorStore((s) => s.editor);
 
   async function newNote() {
     if (!selectedFolderId) return;
