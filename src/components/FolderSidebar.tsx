@@ -208,7 +208,7 @@ function PhotoAvatar({ size }: { size: number }) {
         onHoverEnd={() => setHovered(false)}
       >
         <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative' }}>
-          <img src="https://github.com/rajamails19.png" alt="Raja"
+          <img src="/raja.jpeg" alt="Raja"
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
           <AnimatePresence>
             {hovered && (
@@ -253,7 +253,7 @@ function PhotoAvatar({ size }: { size: number }) {
               zIndex: 9999,
             }}
           >
-            <img src="https://github.com/rajamails19.png" alt="Raja preview"
+            <img src="/raja.jpeg" alt="Raja preview"
               style={{ width: '100%', height: 160, objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
             <div style={{ background: '#1a1a1a', padding: '8px 12px 10px' }}>
               <p style={{ margin: 0, color: 'white', fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>Raja Sekhar</p>
