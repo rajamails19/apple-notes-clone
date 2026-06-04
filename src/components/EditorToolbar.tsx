@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useTheme } from './ThemeProvider';
@@ -84,8 +84,7 @@ function FontSizeDropdown({ editor }: { editor: Editor | null }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: '50%',
-          transform: 'translateX(-50%)',
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
           width: 180, zIndex: 400,
           background: 'var(--bg-menu)', border: '1px solid var(--border)',
           borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
@@ -190,6 +189,18 @@ export default function EditorToolbar() {
   const editor = useEditorStore((s) => s.editor);
   const { selectedNoteId } = useStore();
   const { theme, setTheme } = useTheme();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageInsert = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedNoteId || !editor) return;
+    const fd = new FormData();
+    fd.append('file', file); fd.append('noteId', selectedNoteId);
+    fetch('/api/images', { method: 'POST', body: fd })
+      .then((r) => r.json())
+      .then((d) => { if (d.url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); });
+    e.target.value = '';
+  }, [editor, selectedNoteId]);
 
   return (
     <div style={{
@@ -243,26 +254,15 @@ export default function EditorToolbar() {
       <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
 
       {/* Image */}
-      <label title="Insert Image" style={{ display: 'contents', cursor: editor && selectedNoteId ? 'pointer' : 'default' }}>
-        <input type="file" accept="image/*" style={{ display: 'none' }}
-          disabled={!editor || !selectedNoteId}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file || !selectedNoteId || !editor) return;
-            const fd = new FormData();
-            fd.append('file', file); fd.append('noteId', selectedNoteId);
-            fetch('/api/images', { method: 'POST', body: fd })
-              .then((r) => r.json())
-              .then((d) => { if (d.url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); });
-            e.target.value = '';
-          }}
-        />
-        <TBtn title="Insert Image" disabled={!editor || !selectedNoteId}>
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" />
-          </svg>
-        </TBtn>
-      </label>
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={handleImageInsert}
+      />
+      <TBtn title="Insert Image" disabled={!editor || !selectedNoteId}
+        onClick={() => fileInputRef.current?.click()}>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" />
+        </svg>
+      </TBtn>
 
       {/* Right side: spacer + sync + theme + user */}
       <div style={{ flex: 1 }} />

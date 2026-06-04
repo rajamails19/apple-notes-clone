@@ -170,7 +170,7 @@ export default function NoteEditor() {
 
   if (!note) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
         <EditorToolbar />
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',
@@ -191,10 +191,10 @@ export default function NoteEditor() {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
       <EditorToolbar />
       <div
-        style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}
+        style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, overflow: 'hidden auto' }}
         onContextMenu={handleEditorContextMenu}
       >
         {/* Title + date */}
