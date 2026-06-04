@@ -185,21 +185,32 @@ export default function NoteEditor() {
         style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}
         onContextMenu={handleEditorContextMenu}
       >
-        {/* Title */}
-        <div style={{ padding: '28px 52px 8px' }}>
+        {/* Title + date */}
+        <div style={{ padding: '24px 44px 0' }}>
           <input
             value={note.title}
             onChange={handleTitleChange}
             placeholder="Title"
             style={{
-              width: '100%', fontSize: 26, fontWeight: 700,
+              width: '100%', fontSize: 22, fontWeight: 700,
               color: 'var(--text-primary)', background: 'transparent',
               border: 'none', outline: 'none', fontFamily: 'inherit',
+              lineHeight: '1.2',
             }}
           />
+          <p style={{
+            margin: '3px 0 12px', fontSize: 11,
+            color: 'var(--text-muted)', lineHeight: 1,
+            userSelect: 'none',
+          }}>
+            {new Date(note.updatedAt).toLocaleString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric',
+              hour: 'numeric', minute: '2-digit',
+            })}
+          </p>
         </div>
         {/* Body */}
-        <div style={{ padding: '0 52px' }}>
+        <div style={{ padding: '0 44px' }}>
           <EditorContent editor={editor} />
         </div>
       </div>

@@ -82,23 +82,24 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
       overflow: 'hidden',
     }}>
       {/* Header */}
-      <div style={{ padding: '18px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ padding: '14px 12px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
           Folders
         </span>
         <button
           onClick={createFolder}
           title="New Folder (⌘⇧N)"
           style={{
-            width: 22, height: 22, borderRadius: 5, border: 'none',
+            width: 20, height: 20, borderRadius: 5, border: 'none',
             background: 'transparent', color: 'var(--text-muted)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, lineHeight: 1,
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
-          +
+          <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
         </button>
       </div>
 
@@ -116,11 +117,11 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
               onDoubleClick={() => { setEditingId(folder.id); setEditValue(folder.name); }}
               onContextMenu={(e) => handleRightClick(e, folder)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: mobile ? '12px 12px' : '6px 10px',
-                minHeight: mobile ? 48 : undefined,
-                borderRadius: 8, cursor: 'pointer',
-                userSelect: 'none', marginBottom: 1,
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: mobile ? '11px 10px' : '5px 8px',
+                minHeight: mobile ? 44 : 32,
+                borderRadius: 7, cursor: 'pointer',
+                userSelect: 'none', marginBottom: 0,
                 background: selected ? 'var(--accent)' : 'transparent',
                 color: selected ? 'white' : 'var(--text-primary)',
               }}
@@ -151,10 +152,10 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
                 />
               ) : (
                 <>
-                  <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {folder.name}
                   </span>
-                  <span style={{ fontSize: 11, opacity: 0.6, minWidth: 16, textAlign: 'right' }}>
+                  <span style={{ fontSize: 11, opacity: 0.5, minWidth: 14, textAlign: 'right' }}>
                     {folder.noteCount ?? 0}
                   </span>
                 </>

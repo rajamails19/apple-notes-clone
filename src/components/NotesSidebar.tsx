@@ -140,9 +140,9 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
       overflow: 'hidden',
     }}>
       {/* Header */}
-      <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {folder?.name ?? 'Notes'}
           </h2>
           <button
@@ -150,7 +150,7 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
             disabled={!selectedFolderId}
             title="New Note (⌘N)"
             style={{
-              width: 26, height: 26, borderRadius: '50%', border: 'none',
+              width: 24, height: 24, borderRadius: 6, border: 'none',
               background: 'transparent', color: 'var(--text-muted)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: selectedFolderId ? 1 : 0.3,
@@ -158,7 +158,7 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
             onMouseEnter={(e) => { if (selectedFolderId) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
@@ -166,7 +166,7 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
 
         {/* Search */}
         <div style={{ position: 'relative' }}>
-          <svg style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+          <svg style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} width="11" height="11" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" />
           </svg>
           <input
@@ -176,23 +176,23 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
             placeholder="Search"
             data-no-ctx
             style={{
-              width: '100%', paddingLeft: 26, paddingRight: searchQuery ? 26 : 10,
-              paddingTop: 5, paddingBottom: 5,
-              borderRadius: 8, border: '1px solid var(--border)',
-              background: 'var(--bg-hover)', color: 'var(--text-primary)',
-              fontSize: 13, outline: 'none', fontFamily: 'inherit',
+              width: '100%', paddingLeft: 24, paddingRight: searchQuery ? 24 : 8,
+              paddingTop: 4, paddingBottom: 4,
+              borderRadius: 7, border: 'none',
+              background: 'rgba(0,0,0,0.07)', color: 'var(--text-primary)',
+              fontSize: 12, outline: 'none', fontFamily: 'inherit',
               transition: 'background 0.1s',
             }}
-            onFocus={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-editor)'; }}
-            onBlur={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+            onFocus={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.10)'; }}
+            onBlur={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.07)'; }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               style={{
-                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)',
                 background: 'var(--text-faint)', color: 'white', border: 'none',
-                width: 16, height: 16, borderRadius: '50%', cursor: 'pointer',
+                width: 14, height: 14, borderRadius: '50%', cursor: 'pointer',
                 fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -252,9 +252,9 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
 function SectionLabel({ label }: { label: string }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+      fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
       textTransform: 'uppercase', letterSpacing: '0.07em',
-      padding: '8px 14px 3px',
+      padding: '7px 12px 2px',
     }}>
       {label}
     </div>
@@ -274,8 +274,7 @@ function NoteRow({ note, selected, onSelect, onContextMenu, onDelete }: {
       onClick={onSelect}
       onContextMenu={onContextMenu}
       style={{
-        position: 'relative', padding: '12px 14px',
-        minHeight: 56,
+        position: 'relative', padding: '9px 12px 8px',
         cursor: 'pointer',
         borderBottom: '1px solid var(--border-light)',
         background: selected ? 'var(--bg-selected)' : 'transparent',
@@ -291,15 +290,17 @@ function NoteRow({ note, selected, onSelect, onContextMenu, onDelete }: {
         if (btn) btn.style.display = 'none';
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-          {note.pinned ? <span style={{ marginRight: 3 }}>📌</span> : null}
+      {/* Row 1: title + date */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, lineHeight: '1.3' }}>
+          {note.pinned ? <span style={{ marginRight: 3, fontSize: 10 }}>📌</span> : null}
           {note.title || 'New Note'}
         </p>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, marginTop: 1 }}>{formatDate(note.updatedAt)}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, lineHeight: '1.3' }}>{formatDate(note.updatedAt)}</span>
       </div>
-      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {preview || 'No additional text'}
+      {/* Row 2: preview */}
+      <p style={{ margin: '1px 0 0', fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '1.35' }}>
+        {preview || <span style={{ color: 'var(--text-faint)' }}>No additional text</span>}
       </p>
       <button
         className="del-btn"

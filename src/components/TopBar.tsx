@@ -22,8 +22,8 @@ function IBtn({
       title={title}
       disabled={disabled}
       style={{
-        width: 32, height: 32, padding: 0,
-        borderRadius: 7, border: 'none',
+        width: 28, height: 28, padding: 0,
+        borderRadius: 6, border: 'none',
         cursor: disabled ? 'default' : 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: active ? 'rgba(0,0,0,0.10)' : 'transparent',
@@ -45,7 +45,7 @@ function IBtn({
 
 // ─── Thin separator ───────────────────────────────────────────────────────────
 function Sep() {
-  return <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />;
+  return <div style={{ width: 1, height: 14, background: 'var(--border)', flexShrink: 0, margin: '0 3px' }} />;
 }
 
 // ─── View toggle ──────────────────────────────────────────────────────────────
@@ -56,10 +56,10 @@ function ViewToggle() {
       key={mode} title={label}
       onMouseDown={(e) => { e.preventDefault(); setViewMode(mode); }}
       style={{
-        width: 28, height: 26, border: 'none', cursor: 'pointer',
-        background: viewMode === mode ? 'rgba(0,0,0,0.09)' : 'transparent',
+        width: 24, height: 22, border: 'none', cursor: 'pointer',
+        background: viewMode === mode ? 'rgba(0,0,0,0.10)' : 'transparent',
         color: viewMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
-        borderRadius: 5,
+        borderRadius: 4,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'background 0.1s',
       }}
@@ -70,14 +70,14 @@ function ViewToggle() {
   return (
     <div style={{
       display: 'flex', gap: 1, padding: '2px',
-      borderRadius: 8, background: 'rgba(0,0,0,0.06)',
+      borderRadius: 6, background: 'rgba(0,0,0,0.06)',
     }}>
       {btn('list',
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" />
         </svg>, 'List View')}
       {btn('gallery',
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 002 4.25v2.5A2.25 2.25 0 004.25 9h2.5A2.25 2.25 0 009 6.75v-2.5A2.25 2.25 0 006.75 2h-2.5zm0 9A2.25 2.25 0 002 13.25v2.5A2.25 2.25 0 004.25 18h2.5A2.25 2.25 0 009 15.75v-2.5A2.25 2.25 0 006.75 11h-2.5zm6.5-9A2.25 2.25 0 008.5 4.25v2.5A2.25 2.25 0 0010.75 9h2.5A2.25 2.25 0 0015.5 6.75v-2.5A2.25 2.25 0 0013.25 2h-2.5zm0 9a2.25 2.25 0 00-2.25 2.25v2.5A2.25 2.25 0 0010.75 18h2.5a2.25 2.25 0 002.25-2.25v-2.5A2.25 2.25 0 0013.25 11h-2.5z" />
         </svg>, 'Gallery View')}
     </div>
@@ -114,10 +114,10 @@ function FontSizeDropdown({ editor }: { editor: ReturnType<typeof useEditorConte
         disabled={!editor}
         title="Font Size"
         style={{
-          height: 32, padding: '0 8px',
-          borderRadius: 7, border: 'none',
+          height: 28, padding: '0 7px',
+          borderRadius: 6, border: 'none',
           cursor: editor ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center', gap: 3,
+          display: 'flex', alignItems: 'center', gap: 2,
           background: open ? 'rgba(0,0,0,0.10)' : 'transparent',
           color: editor ? 'var(--text-secondary)' : 'var(--text-faint)',
           transition: 'background 0.1s',
@@ -127,9 +127,9 @@ function FontSizeDropdown({ editor }: { editor: ReturnType<typeof useEditorConte
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = open ? 'rgba(0,0,0,0.10)' : 'transparent'; }}
       >
         {/* "Aa" lettermark */}
-        <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1, fontFamily: '-apple-system,sans-serif' }}>Aa</span>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1, fontFamily: '-apple-system,sans-serif' }}>Aa</span>
         {/* Chevron */}
-        <svg width="8" height="5" viewBox="0 0 8 5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <svg width="7" height="4" viewBox="0 0 8 5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 1l3 3 3-3" />
         </svg>
       </button>
@@ -232,7 +232,7 @@ function TextStylePopover({ editor }: { editor: ReturnType<typeof useEditorConte
         onClick={() => { if (editor) setOpen((o) => !o); }}
       >
         {/* Bold "B" with an underline dot — the Apple Notes "Aa" text-format icon */}
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
           <path d="M3 5.5A1.5 1.5 0 014.5 4h5a3.5 3.5 0 012.852 5.53A3.5 3.5 0 0110 16H4.5A1.5 1.5 0 013 14.5v-9zm3 1v3h3.5a1.5 1.5 0 000-3H6zm0 5v3H10a1.5 1.5 0 000-3H6z" />
         </svg>
       </IBtn>
@@ -275,7 +275,7 @@ function HeadingToggle({ editor }: { editor: ReturnType<typeof useEditorContext>
         disabled={!editor}
         onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
       >
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
           <path d="M3 4.5A.5.5 0 013.5 4h1a.5.5 0 01.5.5V9h6V4.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v11a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5V11H5v4.5a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-11zm13.78 1.59a.5.5 0 010 .76l-1.5 1.32a.5.5 0 01-.78-.52V15.5a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5V7.25L11 8.38a.5.5 0 01-.78-.52L11.72 6.5a.5.5 0 01.78-.02l.02.02 1.5 1.2z" />
         </svg>
       </IBtn>
@@ -285,7 +285,7 @@ function HeadingToggle({ editor }: { editor: ReturnType<typeof useEditorContext>
         disabled={!editor}
         onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
       >
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
           <path d="M3 4.5A.5.5 0 013.5 4h1a.5.5 0 01.5.5V9h6V4.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v11a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5V11H5v4.5a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-11zm9.5 5.25c0-1.24 1.01-2.25 2.25-2.25h.5c1.24 0 2.25 1.01 2.25 2.25 0 .65-.28 1.26-.75 1.71l-2.5 2.29H18a.5.5 0 010 1h-4a.5.5 0 01-.34-.87l3.25-2.97c.24-.22.34-.48.34-.16z" />
         </svg>
       </IBtn>
@@ -328,12 +328,12 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center',
-      padding: mobile ? '0 10px' : '0 14px',
-      gap: mobile ? 2 : 4,
-      background: 'var(--bg-toolbar)',
+      padding: mobile ? '0 8px' : '0 10px',
+      gap: mobile ? 1 : 2,
+      background: 'var(--bg-folder)',
       borderBottom: '1px solid var(--border)',
       flexShrink: 0, flexWrap: 'nowrap',
-      height: mobile ? 44 : 44,
+      height: mobile ? 44 : 38,
       overflowX: mobile ? 'auto' : 'visible',
       overflowY: 'hidden',
       WebkitOverflowScrolling: 'touch',
@@ -347,13 +347,13 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
           <Sep />
           {/* Trash */}
           <IBtn title="Delete Note (⌦)" onClick={deleteNote} disabled={noNote} danger>
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" />
             </svg>
           </IBtn>
           {/* New note */}
           <IBtn title="New Note (⌘N)" onClick={newNote} disabled={noFolder}>
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" />
             </svg>
           </IBtn>
@@ -381,7 +381,7 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
       {/* Bullet list */}
       <IBtn title="Bullet List" active={!!editor?.isActive('bulletList')} disabled={!editor}
         onClick={() => editor?.chain().focus().toggleBulletList().run()}>
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M6 4.75A.75.75 0 016.75 4h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 4.75zM6 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 10zm0 5.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75a.75.75 0 01-.75-.75zM1.99 4.75a1 1 0 011-1H3a1 1 0 110 2h-.01a1 1 0 01-1-1zM1.99 10a1 1 0 011-1H3a1 1 0 110 2h-.01a1 1 0 01-1-1zM1.99 15.25a1 1 0 011-1H3a1 1 0 110 2h-.01a1 1 0 01-1-1z" />
         </svg>
       </IBtn>
@@ -389,7 +389,7 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
       {/* Numbered list */}
       <IBtn title="Numbered List" active={!!editor?.isActive('orderedList')} disabled={!editor}
         onClick={() => editor?.chain().focus().toggleOrderedList().run()}>
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M6 4.75A.75.75 0 016.75 4h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 4.75zM6 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 10zm0 5.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75a.75.75 0 01-.75-.75z" />
           <path d="M2.5 3H3a.5.5 0 010 1v1.5a.5.5 0 01-1 0V4h-.5a.5.5 0 010-1zm-1 6a.5.5 0 01.5-.5H3a1 1 0 110 2 1 1 0 110 2H2.5a.5.5 0 010-1H3a.5.5 0 000-1h-.5a.5.5 0 01-.5-.5zm.5 5h.5a.5.5 0 010 1H2.5a.5.5 0 010-1H3z" />
         </svg>
@@ -418,7 +418,7 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
           }}
         />
         <IBtn title="Insert Image" disabled={!editor || !selectedNoteId}>
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" />
           </svg>
         </IBtn>
@@ -434,8 +434,8 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
           >
             {theme === 'light'
-              ? <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.455 2.004a.75.75 0 01.26.77 7 7 0 009.958 7.967.75.75 0 011.067.853A8.5 8.5 0 1110.5 2a.75.75 0 01.68.43.75.75 0 01-.26.77A6.5 6.5 0 007.455 2.004z" /></svg>
-              : <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zm8-5a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM3 10a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5H2.25A.75.75 0 013 10zm12.657-5.657a.75.75 0 010 1.06l-1.061 1.061a.75.75 0 11-1.06-1.06l1.06-1.061a.75.75 0 011.061 0zm-9.193 9.193a.75.75 0 010 1.06L5.403 15.657a.75.75 0 01-1.06-1.06l1.06-1.062a.75.75 0 011.061 0zm9.193 2.121a.75.75 0 01-1.06 0l-1.062-1.06a.75.75 0 011.061-1.061l1.061 1.06a.75.75 0 010 1.061zM4.464 4.343a.75.75 0 01-1.06 0L2.343 3.28a.75.75 0 011.061-1.06l1.06 1.06a.75.75 0 010 1.062zM10 6.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" /></svg>
+              ? <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.455 2.004a.75.75 0 01.26.77 7 7 0 009.958 7.967.75.75 0 011.067.853A8.5 8.5 0 1110.5 2a.75.75 0 01.68.43.75.75 0 01-.26.77A6.5 6.5 0 007.455 2.004z" /></svg>
+              : <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zm8-5a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM3 10a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5H2.25A.75.75 0 013 10zm12.657-5.657a.75.75 0 010 1.06l-1.061 1.061a.75.75 0 11-1.06-1.06l1.06-1.061a.75.75 0 011.061 0zm-9.193 9.193a.75.75 0 010 1.06L5.403 15.657a.75.75 0 01-1.06-1.06l1.06-1.062a.75.75 0 011.061 0zm9.193 2.121a.75.75 0 01-1.06 0l-1.062-1.06a.75.75 0 011.061-1.061l1.061 1.06a.75.75 0 010 1.061zM4.464 4.343a.75.75 0 01-1.06 0L2.343 3.28a.75.75 0 011.061-1.06l1.06 1.06a.75.75 0 010 1.062zM10 6.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" /></svg>
             }
           </IBtn>
           <UserMenu />
