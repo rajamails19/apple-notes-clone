@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
 import { Folder } from '@/types';
@@ -172,46 +172,117 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
 }
 
 function BrandCard() {
-  return (
-    <div style={{
-      margin: '12px 4px 8px',
-      borderRadius: 14,
-      background: 'linear-gradient(135deg, rgba(232,160,32,0.10) 0%, rgba(232,100,60,0.08) 100%)',
-      border: '1px solid rgba(232,160,32,0.20)',
-      padding: '12px 12px 10px',
-      userSelect: 'none',
-    }}>
-      {/* Avatar + title row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
-        {/* Photo avatar with gradient ring */}
+  const [collapsed, setCollapsed] = useState(false);
+
+  // ── Collapsed: just a small pill with photo + name ──────────────────────────
+  if (collapsed) {
+    return (
+      <div
+        onClick={() => setCollapsed(false)}
+        title="Expand"
+        style={{
+          margin: '8px 4px 8px',
+          borderRadius: 40,
+          background: 'linear-gradient(135deg, rgba(232,160,32,0.12) 0%, rgba(232,100,60,0.10) 100%)',
+          border: '1px solid rgba(232,160,32,0.25)',
+          padding: '5px 10px 5px 5px',
+          display: 'flex', alignItems: 'center', gap: 8,
+          cursor: 'pointer', userSelect: 'none',
+          transition: 'opacity 0.15s',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.8'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+      >
         <div style={{
-          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+          width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
           padding: 2,
           background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
-          boxShadow: '0 2px 8px rgba(232,160,32,0.35)',
         }}>
-          <img
-            src="https://github.com/rajamails19.png"
-            alt="Raja"
-            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-          />
+          <img src="https://github.com/rajamails19.png" alt="Raja"
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
         </div>
-        <div>
-          <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1 }}>
-            Noteva
-          </p>
-          <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1 }}>
-            Made with <span style={{ color: '#e8402a' }}>♥</span> by Raja
-          </p>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+          Noteva <span style={{ color: '#e8402a' }}>♥</span> Raja
+        </span>
+        {/* Expand chevron */}
+        <svg style={{ marginLeft: 'auto' }} width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" color="var(--text-muted)">
+          <path d="M5 8l5-5 5 5" />
+        </svg>
+      </div>
+    );
+  }
+
+  // ── Expanded card ────────────────────────────────────────────────────────────
+  return (
+    <div style={{
+      margin: '8px 4px 8px',
+      borderRadius: 16,
+      background: 'linear-gradient(150deg, rgba(246,166,35,0.13) 0%, rgba(232,64,42,0.09) 60%, rgba(192,64,176,0.07) 100%)',
+      border: '1px solid rgba(232,160,32,0.25)',
+      padding: '14px 14px 12px',
+      userSelect: 'none',
+      position: 'relative',
+    }}>
+      {/* Collapse button */}
+      <button
+        onClick={() => setCollapsed(true)}
+        title="Minimize"
+        style={{
+          position: 'absolute', top: 8, right: 8,
+          width: 20, height: 20, borderRadius: '50%',
+          border: 'none', background: 'rgba(0,0,0,0.07)',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--text-muted)',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.13)'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.07)'; }}
+      >
+        <svg width="9" height="9" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12l5 5 5-5" />
+        </svg>
+      </button>
+
+      {/* Photo — centred, large */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          padding: 3,
+          background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
+          boxShadow: '0 4px 14px rgba(232,160,32,0.40)',
+        }}>
+          <img src="https://github.com/rajamails19.png" alt="Raja"
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
         </div>
       </div>
 
+      {/* App badge */}
+      <p style={{
+        margin: '0 0 4px', textAlign: 'center',
+        fontSize: 9, fontWeight: 800, letterSpacing: '0.12em',
+        textTransform: 'uppercase', color: 'var(--accent)',
+      }}>
+        ✦ Noteva
+      </p>
+
+      {/* Credit */}
+      <p style={{
+        margin: '0 0 8px', textAlign: 'center',
+        fontSize: 13, fontWeight: 700,
+        color: 'var(--text-primary)', lineHeight: 1.3,
+      }}>
+        Made with <span style={{ color: '#e8402a', fontSize: 14 }}>♥</span> by Raja
+      </p>
+
+      {/* Divider */}
+      <div style={{ height: 1, background: 'rgba(232,160,32,0.18)', margin: '0 0 8px' }} />
+
       {/* Tagline */}
       <p style={{
-        margin: 0, fontSize: 10.5, lineHeight: 1.4,
+        margin: 0, textAlign: 'center',
+        fontSize: 11, lineHeight: 1.5,
         color: 'var(--text-muted)',
       }}>
-        Your thoughts, beautifully organized — fast, private & always in sync.
+        Your thoughts, beautifully<br />organized — fast &amp; always in sync.
       </p>
     </div>
   );
