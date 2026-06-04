@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
 import { Folder } from '@/types';
@@ -79,7 +80,6 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
       background: 'var(--bg-folder)', borderRight: '1px solid var(--border)',
-      overflow: 'hidden',
     }}>
       {/* Header */}
       <div style={{ padding: '14px 12px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -104,7 +104,7 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
       </div>
 
       {/* Folder list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2px 6px 8px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'visible', padding: '2px 6px 8px', display: 'flex', flexDirection: 'column' }}>
         {folders.length === 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center', marginTop: 24 }}>No folders yet</p>
         )}
@@ -173,93 +173,95 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
 
 function PhotoAvatar({ size }: { size: number }) {
   const [hovered, setHovered] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-
-  const onEnter = () => {
-    if (ref.current) {
-      const r = ref.current.getBoundingClientRect();
-      setPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-    }
-    setHovered(true);
-  };
-
-  const ring = (s: number) => (
-    <div style={{
-      width: s, height: s, borderRadius: '50%',
-      padding: Math.max(2, s * 0.04),
-      background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
-      boxShadow: `0 4px ${s * 0.22}px rgba(232,160,32,0.45)`,
-      flexShrink: 0,
-    }}>
-      <img src="https://github.com/rajamails19.png" alt="Raja"
-        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-    </div>
-  );
 
   return (
-    <>
-      {/* Normal-size avatar */}
-      <div ref={ref} onMouseEnter={onEnter} onMouseLeave={() => setHovered(false)}
-        style={{ cursor: 'zoom-in', position: 'relative', display: 'inline-flex' }}>
-        {ring(size)}
-        {/* Subtle "hover me" hint ring pulse */}
-        {!hovered && (
-          <div style={{
-            position: 'absolute', inset: -3, borderRadius: '50%',
-            border: '1.5px solid rgba(232,160,32,0.35)',
-            animation: 'pulse-ring 2s ease-out infinite',
-            pointerEvents: 'none',
-          }} />
-        )}
+    <motion.div
+      style={{
+        position: 'relative',
+        width: size, height: size,
+        borderRadius: '50%',
+        padding: 3,
+        background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
+        cursor: 'pointer',
+        flexShrink: 0,
+        zIndex: hovered ? 50 : 'auto',
+      }}
+      animate={hovered
+        ? { scale: 1.12, filter: 'drop-shadow(0 0 12px rgba(246,166,35,0.65))' }
+        : { scale: 1,    filter: 'drop-shadow(0 0 0px rgba(246,166,35,0))' }
+      }
+      transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+    >
+      {/* Photo */}
+      <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative' }}>
+        <img
+          src="https://github.com/rajamails19.png"
+          alt="Raja"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
+        />
+        {/* VIEW overlay on hover */}
+        <AnimatePresence>
+          {hovered && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.32)',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 2,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="white">
+                <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <span style={{ fontSize: 7, fontWeight: 800, color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase' }}>View</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Fixed-position zoom overlay */}
-      {hovered && (
-        <div
-          onMouseLeave={() => setHovered(false)}
-          style={{
-            position: 'fixed',
-            left: pos.x, top: pos.y,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 9999,
-            animation: 'photo-pop 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards',
-          }}
-        >
-          <div style={{ position: 'relative' }}>
-            {ring(160)}
-            {/* VIEW overlay */}
-            <div style={{
-              position: 'absolute', inset: 4, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.30)',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 4,
-            }}>
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="white" opacity={0.9}>
-                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
-                <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"/>
-              </svg>
-              <span style={{ fontSize: 10, fontWeight: 800, color: 'white', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Raja
-              </span>
+      {/* Floating preview card — pops UP above the avatar */}
+      <AnimatePresence>
+        {hovered && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.88, y: 10 }}
+            animate={{ opacity: 1, scale: 1,    y: 0  }}
+            exit={{    opacity: 0, scale: 0.88, y: 10 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 10px)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 150,
+              borderRadius: 14,
+              overflow: 'hidden',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.40)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              pointerEvents: 'none',
+              zIndex: 9999,
+            }}
+          >
+            <img
+              src="https://github.com/rajamails19.png"
+              alt="Raja preview"
+              style={{ width: '100%', height: 160, objectFit: 'cover', objectPosition: 'top', display: 'block' }}
+            />
+            <div style={{ background: '#1a1a1a', padding: '8px 12px 10px' }}>
+              <p style={{ margin: 0, color: 'white', fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>Raja Sekhar</p>
+              <p style={{ margin: '2px 0 0', color: '#f6a623', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                Founder &amp; Builder
+              </p>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Keyframe styles */}
-      <style>{`
-        @keyframes photo-pop {
-          from { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
-          to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
-        }
-        @keyframes pulse-ring {
-          0%   { transform: scale(1);   opacity: 0.6; }
-          70%  { transform: scale(1.3); opacity: 0; }
-          100% { transform: scale(1.3); opacity: 0; }
-        }
-      `}</style>
-    </>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
