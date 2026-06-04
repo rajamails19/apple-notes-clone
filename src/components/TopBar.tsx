@@ -4,6 +4,7 @@ import { useCallback, useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from './ThemeProvider';
 import { useEditorContext } from '@/contexts/EditorContext';
+import type { Editor } from '@tiptap/react';
 import { FONT_SIZES, DEFAULT_SIZE, parsePxSize } from '@/extensions/FontSize';
 import { ViewMode } from '@/types';
 import SyncStatus from './SyncStatus';
@@ -93,7 +94,7 @@ const FONT_LABELS: Record<number, string> = {
   64: 'Display', 72: 'Display+', 96: 'Poster',
 };
 
-function FontSizeDropdown({ editor }: { editor: ReturnType<typeof useEditorContext>['editorRef']['current'] }) {
+function FontSizeDropdown({ editor }: { editor: Editor | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -182,7 +183,7 @@ function FontSizeDropdown({ editor }: { editor: ReturnType<typeof useEditorConte
 }
 
 // ─── Text style popover (B / I / U / Strike / Highlight) ─────────────────────
-function TextStylePopover({ editor }: { editor: ReturnType<typeof useEditorContext>['editorRef']['current'] }) {
+function TextStylePopover({ editor }: { editor: Editor | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -266,7 +267,7 @@ function TextStylePopover({ editor }: { editor: ReturnType<typeof useEditorConte
 }
 
 // ─── Heading toggle group ─────────────────────────────────────────────────────
-function HeadingToggle({ editor }: { editor: ReturnType<typeof useEditorContext>['editorRef']['current'] }) {
+function HeadingToggle({ editor }: { editor: Editor | null }) {
   return (
     <div style={{ display: 'flex', gap: 1 }}>
       <IBtn
@@ -300,8 +301,7 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
     addNote, removeNote, incrementFolderCount, decrementFolderCount,
   } = useStore();
   const { theme, setTheme } = useTheme();
-  const { editorRef } = useEditorContext();
-  const editor = editorRef.current;
+  const { editor } = useEditorContext(); // reactive — re-renders when editor mounts
 
   async function newNote() {
     if (!selectedFolderId) return;

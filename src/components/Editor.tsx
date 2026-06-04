@@ -18,7 +18,7 @@ export default function NoteEditor() {
   const note = notes.find((n) => n.id === selectedNoteId) ?? null;
   const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastNoteId = useRef<string | null>(null);
-  const { editorRef } = useEditorContext();
+  const { editorRef, setEditor } = useEditorContext();
   const { show: showCtx } = useContextMenu();
   const { setSyncing, setSaved, setError } = useSyncStatus();
 
@@ -85,11 +85,11 @@ export default function NoteEditor() {
     },
   });
 
-  // Register editor in context so TopBar can access it
+  // Register editor in context so TopBar can access it reactively
   useEffect(() => {
-    editorRef.current = editor;
-    return () => { editorRef.current = null; };
-  }, [editor, editorRef]);
+    setEditor(editor);
+    return () => { setEditor(null); };
+  }, [editor, setEditor]);
 
   // Sync content when switching notes
   useEffect(() => {
