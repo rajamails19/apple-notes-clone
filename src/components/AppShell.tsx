@@ -2,7 +2,6 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { EditorProvider } from '@/contexts/EditorContext';
 import MenuBar from './MenuBar';
 import TopBar from './TopBar';
 import FolderSidebar from './FolderSidebar';
@@ -289,13 +288,12 @@ export default function AppShell() {
   // ─── Desktop layout ────────────────────────────────────────────────────────
   if (!isMobile) {
     return (
-      <EditorProvider>
+      <>
         <div
           id="app-shell"
           style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-editor)' }}
         >
           <MenuBar />
-          <TopBar />
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             {showFolderSidebar && (
@@ -320,13 +318,13 @@ export default function AppShell() {
           </div>
         </div>
         <ContextMenu />
-      </EditorProvider>
+      </>
     );
   }
 
   // ─── Mobile layout ─────────────────────────────────────────────────────────
   return (
-    <EditorProvider>
+    <>
       <div
         id="app-shell"
         style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--bg-editor)' }}
@@ -373,6 +371,6 @@ export default function AppShell() {
         </div>
       </div>
       <ContextMenu />
-    </EditorProvider>
+    </>
   );
 }

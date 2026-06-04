@@ -8,6 +8,7 @@ import { TextStyle, FontSize } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from '@/extensions/ResizableImage';
+import EditorToolbar from './EditorToolbar';
 import { useStore } from '@/store/useStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useContextMenu } from '@/store/useContextMenu';
@@ -169,12 +170,14 @@ export default function NoteEditor() {
 
   if (!note) {
     return (
-      <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-editor)', color: 'var(--text-faint)',
-        gap: 12,
-      }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)', overflow: 'hidden' }}>
+        <EditorToolbar />
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          color: 'var(--text-faint)',
+          gap: 12,
+        }}>
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={0.75} opacity={0.35}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
         </svg>
@@ -182,12 +185,14 @@ export default function NoteEditor() {
           <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>No note selected</p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-faint)' }}>Choose a note from the list or press ⌘N</p>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)', overflow: 'hidden' }}>
+      <EditorToolbar />
       <div
         style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}
         onContextMenu={handleEditorContextMenu}
