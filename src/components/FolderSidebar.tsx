@@ -236,8 +236,7 @@ function PhotoAvatar({ size }: { size: number }) {
             style={{
               position: 'absolute',
               bottom: 'calc(100% + 10px)',
-              left: '50%',
-              transform: 'translateX(-50%)',
+              left: -8,
               width: 150,
               borderRadius: 14,
               overflow: 'hidden',
