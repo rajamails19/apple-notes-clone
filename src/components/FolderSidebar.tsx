@@ -171,6 +171,98 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
   );
 }
 
+function PhotoAvatar({ size }: { size: number }) {
+  const [hovered, setHovered] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+
+  const onEnter = () => {
+    if (ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    }
+    setHovered(true);
+  };
+
+  const ring = (s: number) => (
+    <div style={{
+      width: s, height: s, borderRadius: '50%',
+      padding: Math.max(2, s * 0.04),
+      background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
+      boxShadow: `0 4px ${s * 0.22}px rgba(232,160,32,0.45)`,
+      flexShrink: 0,
+    }}>
+      <img src="https://github.com/rajamails19.png" alt="Raja"
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+    </div>
+  );
+
+  return (
+    <>
+      {/* Normal-size avatar */}
+      <div ref={ref} onMouseEnter={onEnter} onMouseLeave={() => setHovered(false)}
+        style={{ cursor: 'zoom-in', position: 'relative', display: 'inline-flex' }}>
+        {ring(size)}
+        {/* Subtle "hover me" hint ring pulse */}
+        {!hovered && (
+          <div style={{
+            position: 'absolute', inset: -3, borderRadius: '50%',
+            border: '1.5px solid rgba(232,160,32,0.35)',
+            animation: 'pulse-ring 2s ease-out infinite',
+            pointerEvents: 'none',
+          }} />
+        )}
+      </div>
+
+      {/* Fixed-position zoom overlay */}
+      {hovered && (
+        <div
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            position: 'fixed',
+            left: pos.x, top: pos.y,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 9999,
+            animation: 'photo-pop 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards',
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            {ring(160)}
+            {/* VIEW overlay */}
+            <div style={{
+              position: 'absolute', inset: 4, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.30)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 4,
+            }}>
+              <svg width="22" height="22" viewBox="0 0 20 20" fill="white" opacity={0.9}>
+                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
+                <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"/>
+              </svg>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'white', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                Raja
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keyframe styles */}
+      <style>{`
+        @keyframes photo-pop {
+          from { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+          to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+        }
+        @keyframes pulse-ring {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          70%  { transform: scale(1.3); opacity: 0; }
+          100% { transform: scale(1.3); opacity: 0; }
+        }
+      `}</style>
+    </>
+  );
+}
+
 function BrandCard() {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -193,14 +285,7 @@ function BrandCard() {
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.8'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
       >
-        <div style={{
-          width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-          padding: 2,
-          background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
-        }}>
-          <img src="https://github.com/rajamails19.png" alt="Raja"
-            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-        </div>
+        <PhotoAvatar size={26} />
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
           Noteva <span style={{ color: '#e8402a' }}>♥</span> Raja
         </span>
@@ -242,17 +327,9 @@ function BrandCard() {
         </svg>
       </button>
 
-      {/* Photo — centred, large */}
+      {/* Photo — centred, large, hoverable */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%',
-          padding: 3,
-          background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
-          boxShadow: '0 4px 14px rgba(232,160,32,0.40)',
-        }}>
-          <img src="https://github.com/rajamails19.png" alt="Raja"
-            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-        </div>
+        <PhotoAvatar size={68} />
       </div>
 
       {/* App badge */}
