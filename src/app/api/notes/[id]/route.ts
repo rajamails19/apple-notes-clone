@@ -37,6 +37,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.content  !== undefined) update.content   = body.content;
     if (body.folderId !== undefined) update.folder_id = body.folderId;
     if (body.pinned   !== undefined) update.pinned    = body.pinned === 1;
+    if (body.trashed  !== undefined) {
+      update.trashed   = body.trashed === 1;
+      update.trashed_at = body.trashed === 1 ? new Date().toISOString() : null;
+    }
 
     const { data, error } = await supabase
       .from('notes')
@@ -63,6 +67,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   for (const key of allowed) {
     if (body[key] !== undefined) { fields.push(`${key} = ?`); values.push(body[key]); }
   }
+  // Handle trashed / restore
+  if (body.trashed !== undefined) {
+    fields.push('trashed = ?');   values.push(body.trashed);
+    fields.push('trashedAt = ?'); values.push(body.trashed === 1 ? now : null);
+  }
   fields.push('updatedAt = ?');
   values.push(now);
   values.push(id);
@@ -70,23 +79,35 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json(db.prepare('SELECT * FROM notes WHERE id = ?').get(id));
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const permanent = new URL(req.url).searchParams.get('permanent') === 'true';
 
   if (useSupabase()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { error } = await supabase.from('notes').delete().eq('id', id).eq('user_id', user.id);
-    if (error) {
-      console.error('[notes DELETE] Supabase error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (permanent) {
+      const { error } = await supabase.from('notes').delete().eq('id', id).eq('user_id', user.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: true });
     }
+    // Soft-delete
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('notes')
+      .update({ trashed: true, trashed_at: now })
+      .eq('id', id).eq('user_id', user.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   }
 
   const { getDb } = await import('@/lib/db');
-  getDb().prepare('DELETE FROM notes WHERE id = ?').run(id);
+  if (permanent) {
+    getDb().prepare('DELETE FROM notes WHERE id = ?').run(id);
+  } else {
+    const now = new Date().toISOString();
+    getDb().prepare('UPDATE notes SET trashed = 1, trashedAt = ? WHERE id = ?').run(now, id);
+  }
   return NextResponse.json({ success: true });
 }

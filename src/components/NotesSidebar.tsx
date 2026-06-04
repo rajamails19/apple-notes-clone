@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
-import { Note } from '@/types';
+import { Note, VIRTUAL_FOLDER_ALL, VIRTUAL_FOLDER_TRASH } from '@/types';
 import GalleryNotes from './GalleryNotes';
 
 function formatDate(iso: string) {
@@ -15,7 +15,8 @@ function formatDate(iso: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function stripHtml(html: string) {
+function stripHtml(html: string | undefined | null) {
+  if (!html) return '';
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
@@ -24,7 +25,11 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
     notes, selectedFolderId, selectedNoteId, searchQuery, folders, viewMode,
     setSelectedNote, setSearchQuery, addNote, removeNote,
     incrementFolderCount, decrementFolderCount, pinNote, moveNote,
+    trashNote, restoreNote, trashCount, setTrashCount,
   } = useStore();
+
+  const isTrashView = selectedFolderId === VIRTUAL_FOLDER_TRASH;
+  const isAllView   = selectedFolderId === VIRTUAL_FOLDER_ALL;
 
   // Wrap setSelectedNote to also call the mobile callback
   const handleSelect = (id: string) => { setSelectedNote(id); onSelectNote?.(id); };
@@ -44,21 +49,39 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
   const regularNotes = filtered.filter((n) => !n.pinned);
 
   async function createNote() {
-    if (!selectedFolderId) return;
+    if (!selectedFolderId || isTrashView || isAllView) return;
     const res = await fetch('/api/notes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folderId: selectedFolderId }),
     });
+    if (!res.ok) { console.error('Failed to create note', await res.text()); return; }
     const note = await res.json();
+    if (!note?.id) return;
     addNote(note);
     incrementFolderCount(selectedFolderId);
     setSelectedNote(note.id);
   }
 
   async function handleDeleteNote(note: Note) {
+    // Soft-delete: move to Recently Deleted
     await fetch(`/api/notes/${note.id}`, { method: 'DELETE' });
-    decrementFolderCount(note.folderId);
+    trashNote(note.id);
+  }
+
+  async function handlePermanentDelete(note: Note) {
+    await fetch(`/api/notes/${note.id}?permanent=true`, { method: 'DELETE' });
     removeNote(note.id);
+    setTrashCount(Math.max(0, trashCount - 1));
+  }
+
+  async function handleRestoreNote(note: Note) {
+    await fetch(`/api/notes/${note.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: 0 }),
+    });
+    restoreNote(note.id);
+    // Increment the note's original folder count
+    incrementFolderCount(note.folderId);
   }
 
   async function handleDuplicate(note: Note) {
@@ -90,6 +113,21 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
   }
 
   function buildNoteCtxMenu(note: Note) {
+    // Trash-view context menu
+    if (isTrashView) {
+      return [
+        { label: 'Put Back', icon: '↩️', action: () => handleRestoreNote(note) },
+        {
+          label: 'Move To',
+          icon: '→',
+          submenu: folders.length
+            ? folders.map((f) => ({ label: f.name, action: () => handleMoveFromTrash(note, f.id) }))
+            : [{ label: 'No folders', disabled: true }],
+        },
+        { separator: true },
+        { label: 'Delete Immediately', icon: '🗑', danger: true, action: () => handlePermanentDelete(note) },
+      ];
+    }
     const otherFolders = folders.filter((f) => f.id !== note.folderId);
     showCtx(0, 0, []); // will be overridden by onContextMenu below
     return [
@@ -111,6 +149,15 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
       { separator: true },
       { label: 'Delete', icon: '🗑', danger: true, action: () => handleDeleteNote(note) },
     ];
+  }
+
+  async function handleMoveFromTrash(note: Note, toFolderId: string) {
+    await fetch(`/api/notes/${note.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: 0, folderId: toFolderId }),
+    });
+    restoreNote(note.id);
+    incrementFolderCount(toFolderId);
   }
 
   function onNoteCtxMenu(e: React.MouseEvent, note: Note) {
@@ -169,19 +216,21 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
 
           <div style={{ flex: 1 }} />
 
-          {/* Delete selected note */}
+          {/* Delete selected note — soft-delete (or permanent if in trash) */}
           <button
             onClick={async () => {
-              const { selectedNoteId: nid, notes: ns, removeNote: rem, decrementFolderCount: dec } = useStore.getState();
+              const { selectedNoteId: nid, notes: ns } = useStore.getState();
               if (!nid) return;
               const n = ns.find((x) => x.id === nid);
               if (!n) return;
-              await fetch(`/api/notes/${nid}`, { method: 'DELETE' });
-              if (n) dec(n.folderId);
-              rem(nid);
+              if (isTrashView) {
+                await handlePermanentDelete(n);
+              } else {
+                await handleDeleteNote(n);
+              }
             }}
             disabled={!selectedNoteId}
-            title="Delete Note"
+            title={isTrashView ? 'Delete Immediately' : 'Move to Recently Deleted'}
             style={{
               width: 30, height: 30, borderRadius: 6, border: 'none',
               background: 'transparent',
@@ -197,27 +246,53 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
             </svg>
           </button>
 
-          {/* New note — compose/pencil icon */}
-          <button
-            onClick={createNote}
-            disabled={!selectedFolderId}
-            title="New Note (⌘N)"
-            style={{
-              width: 30, height: 30, borderRadius: 6, border: 'none',
-              background: 'transparent',
-              color: selectedFolderId ? 'var(--accent)' : 'var(--text-faint)',
-              cursor: selectedFolderId ? 'pointer' : 'default',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            onMouseEnter={(e) => { if (selectedFolderId) (e.currentTarget as HTMLElement).style.background = 'rgba(128,128,128,0.10)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-          >
-            {/* Pencil / compose icon */}
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-              <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-            </svg>
-          </button>
+          {/* New note — hidden in trash view */}
+          {!isTrashView && (
+            <button
+              onClick={createNote}
+              disabled={!selectedFolderId || isAllView}
+              title="New Note (⌘N)"
+              style={{
+                width: 30, height: 30, borderRadius: 6, border: 'none',
+                background: 'transparent',
+                color: (selectedFolderId && !isAllView) ? 'var(--accent)' : 'var(--text-faint)',
+                cursor: (selectedFolderId && !isAllView) ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              onMouseEnter={(e) => { if (selectedFolderId && !isAllView) (e.currentTarget as HTMLElement).style.background = 'rgba(128,128,128,0.10)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+              </svg>
+            </button>
+          )}
+
+          {/* Trash view: "Put Back" restore button when note is selected */}
+          {isTrashView && selectedNoteId && (
+            <button
+              onClick={async () => {
+                const { selectedNoteId: nid, notes: ns } = useStore.getState();
+                if (!nid) return;
+                const n = ns.find((x) => x.id === nid);
+                if (n) await handleRestoreNote(n);
+              }}
+              title="Put Back"
+              style={{
+                width: 30, height: 30, borderRadius: 6, border: 'none',
+                background: 'transparent', color: 'var(--accent)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(128,128,128,0.10)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              {/* Undo / restore icon */}
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h10.003a5.375 5.375 0 010 10.75H10.75a.75.75 0 010-1.5h2.875a3.875 3.875 0 000-7.75H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.5-5.25a.75.75 0 010-1.085l5.5-5.25a.75.75 0 011.061.025z" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Search */}
@@ -265,7 +340,9 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
         ) : filtered.length === 0 ? (
           searchQuery
             ? <EmptyState icon="🔍" title="No results" sub={`Nothing matched "${searchQuery}"`} />
-            : <EmptyState icon="📝" title="No notes yet" sub="Press ⌘N or tap + to create your first note" />
+            : isTrashView
+              ? <EmptyState icon="🗑" title="Recently Deleted is Empty" sub="Notes you delete will appear here" />
+              : <EmptyState icon="📝" title="No notes yet" sub="Press ⌘N or tap + to create your first note" />
         ) : viewMode === 'gallery' ? (
           <GalleryNotes
             notes={filtered}
@@ -276,26 +353,29 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
         ) : (
           <>
             {/* Pinned section */}
-            {pinnedNotes.length > 0 && (
+            {!isTrashView && pinnedNotes.length > 0 && (
               <>
                 <SectionLabel label="Pinned" />
-                {pinnedNotes.map((note) => (
-                  <NoteRow key={note.id} note={note} selected={note.id === selectedNoteId}
+                {pinnedNotes.map((note, i) => (
+                  <NoteRow key={note.id ?? `pinned-${i}`} note={note} selected={note.id === selectedNoteId}
                     onSelect={() => handleSelect(note.id)}
                     onContextMenu={(e) => onNoteCtxMenu(e, note)}
                     onDelete={() => handleDeleteNote(note)}
+                    folderName={isAllView ? folders.find((f) => f.id === note.folderId)?.name : undefined}
                   />
                 ))}
                 {regularNotes.length > 0 && <SectionLabel label="Notes" />}
               </>
             )}
 
-            {/* Regular notes */}
-            {regularNotes.map((note) => (
-              <NoteRow key={note.id} note={note} selected={note.id === selectedNoteId}
+            {/* Regular notes (or all trash notes) */}
+            {(isTrashView ? filtered : regularNotes).map((note, i) => (
+              <NoteRow key={note.id ?? `note-${i}`} note={note} selected={note.id === selectedNoteId}
                 onSelect={() => handleSelect(note.id)}
                 onContextMenu={(e) => onNoteCtxMenu(e, note)}
-                onDelete={() => handleDeleteNote(note)}
+                onDelete={() => isTrashView ? handlePermanentDelete(note) : handleDeleteNote(note)}
+                isTrash={isTrashView}
+                folderName={isAllView ? folders.find((f) => f.id === note.folderId)?.name : undefined}
               />
             ))}
           </>
@@ -317,11 +397,13 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-function NoteRow({ note, selected, onSelect, onContextMenu, onDelete }: {
+function NoteRow({ note, selected, onSelect, onContextMenu, onDelete, isTrash, folderName }: {
   note: Note; selected: boolean;
   onSelect: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onDelete: () => void;
+  isTrash?: boolean;
+  folderName?: string;
 }) {
   const preview = stripHtml(note.content).slice(0, 80);
 
@@ -354,14 +436,15 @@ function NoteRow({ note, selected, onSelect, onContextMenu, onDelete }: {
         </p>
         <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, lineHeight: '1.3' }}>{formatDate(note.updatedAt)}</span>
       </div>
-      {/* Row 2: preview */}
+      {/* Row 2: preview + folder tag for All Notes view */}
       <p style={{ margin: '1px 0 0', fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '1.35' }}>
+        {folderName && <span style={{ color: 'var(--accent)', fontSize: 10, fontWeight: 600, marginRight: 5 }}>{folderName}</span>}
         {preview || <span style={{ color: 'var(--text-faint)' }}>No additional text</span>}
       </p>
       <button
         className="del-btn"
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        title="Delete"
+        title={isTrash ? 'Delete Immediately' : 'Move to Recently Deleted'}
         style={{
           display: 'none', position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
           width: 18, height: 18, borderRadius: '50%', border: 'none',

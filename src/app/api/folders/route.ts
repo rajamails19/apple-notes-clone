@@ -13,21 +13,39 @@ export async function GET() {
 
     const { data: folders, error } = await supabase
       .from('folders')
-      .select('*, notes(count)')
+      .select('*, notes!inner(count)')
+      .eq('user_id', user.id)
+      .eq('notes.trashed', false)
+      .order('created_at', { ascending: true });
+
+    // Fallback: if the inner join filtered out folders with 0 notes, use a plain select
+    const { data: allFolders, error: allError } = await supabase
+      .from('folders')
+      .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('[folders GET] Supabase error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (allError) {
+      console.error('[folders GET] Supabase error:', allError);
+      return NextResponse.json({ error: allError.message }, { status: 500 });
+    }
+
+    // Get non-trashed note counts per folder
+    const { data: counts } = await supabase
+      .from('notes')
+      .select('folder_id')
+      .eq('user_id', user.id)
+      .eq('trashed', false);
+
+    const countMap: Record<string, number> = {};
+    for (const n of (counts ?? [])) {
+      countMap[n.folder_id] = (countMap[n.folder_id] ?? 0) + 1;
     }
 
     return NextResponse.json(
-      (folders ?? []).map((f: Record<string, unknown>) => {
-        const noteArr = f.notes as unknown as Array<{ count: number }>;
-        const count = noteArr?.[0]?.count ?? 0;
-        return { ...mapFolder(f as Parameters<typeof mapFolder>[0]), noteCount: count };
-      })
+      (allFolders ?? []).map((f: Parameters<typeof mapFolder>[0]) =>
+        ({ ...mapFolder(f), noteCount: countMap[f.id] ?? 0 })
+      )
     );
   }
 
@@ -37,7 +55,7 @@ export async function GET() {
   return NextResponse.json(db.prepare(`
     SELECT f.*, COUNT(n.id) as noteCount
     FROM folders f
-    LEFT JOIN notes n ON n.folderId = f.id
+    LEFT JOIN notes n ON n.folderId = f.id AND n.trashed = 0
     GROUP BY f.id
     ORDER BY f.createdAt ASC
   `).all());

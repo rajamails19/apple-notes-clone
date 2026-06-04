@@ -11,9 +11,14 @@ export interface Note {
   title: string;
   content: string;
   pinned: number; // 0 | 1
+  trashed: number; // 0 | 1
+  trashedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export const VIRTUAL_FOLDER_ALL      = '__all__';
+export const VIRTUAL_FOLDER_TRASH    = '__recently_deleted__';
 
 export interface Image {
   id: string;

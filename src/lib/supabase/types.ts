@@ -45,13 +45,15 @@ export function mapFolder(row: DbFolder, noteCount = 0): Folder {
   return { id: row.id, name: row.name, createdAt: row.created_at, noteCount };
 }
 
-export function mapNote(row: DbNote): Note {
+export function mapNote(row: DbNote & { trashed?: boolean; trashed_at?: string | null }): Note {
   return {
     id:        row.id,
     folderId:  row.folder_id,
     title:     row.title,
     content:   row.content,
     pinned:    row.pinned ? 1 : 0,
+    trashed:   row.trashed ? 1 : 0,
+    trashedAt: row.trashed_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

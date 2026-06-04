@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
-import { Folder } from '@/types';
+import { Folder, VIRTUAL_FOLDER_ALL, VIRTUAL_FOLDER_TRASH } from '@/types';
 
 export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boolean; onSelectFolder?: (id: string) => void } = {}) {
-  const { folders, selectedFolderId, setSelectedFolder, addFolder, updateFolder, removeFolder } = useStore();
+  const { folders, selectedFolderId, setSelectedFolder, addFolder, updateFolder, removeFolder, trashCount } = useStore();
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [editValue, setEditValue]   = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +105,40 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
 
       {/* Folder list */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'visible', padding: '2px 6px 8px', display: 'flex', flexDirection: 'column' }}>
+
+        {/* ── All Notes virtual row ── */}
+        {(() => {
+          const totalNotes = folders.reduce((sum, f) => sum + (f.noteCount ?? 0), 0);
+          const sel = selectedFolderId === VIRTUAL_FOLDER_ALL;
+          return (
+            <div
+              onClick={() => { setSelectedFolder(VIRTUAL_FOLDER_ALL); onSelectFolder?.(VIRTUAL_FOLDER_ALL); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: mobile ? '11px 10px' : '5px 8px',
+                minHeight: mobile ? 44 : 32,
+                borderRadius: 7, cursor: 'pointer', userSelect: 'none',
+                background: sel ? 'var(--accent)' : 'transparent',
+                color: sel ? 'white' : 'var(--text-primary)',
+              }}
+              onMouseEnter={(e) => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+              onMouseLeave={(e) => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              {/* Grid / all notes icon */}
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: 0.75, flexShrink: 0 }}>
+                <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 014.25 2h11.5A2.25 2.25 0 0118 4.25v11.5A2.25 2.25 0 0115.75 18H4.25A2.25 2.25 0 012 15.75V4.25zM4.25 3.5a.75.75 0 00-.75.75V9.5h13V4.25a.75.75 0 00-.75-.75H4.25zM16.5 11h-5.25v5.5h4.5a.75.75 0 00.75-.75V11zm-6.75 5.5V11H3.5v4.75c0 .414.336.75.75.75h5.5z" />
+              </svg>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                All Notes
+              </span>
+              <span style={{ fontSize: 11, opacity: 0.5, minWidth: 14, textAlign: 'right' }}>{totalNotes}</span>
+            </div>
+          );
+        })()}
+
+        {/* ── Divider ── */}
+        <div style={{ height: 1, background: 'var(--border-light)', margin: '2px 4px 4px' }} />
+
         {folders.length === 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center', marginTop: 24 }}>No folders yet</p>
         )}
@@ -163,8 +197,40 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
             </div>
           );
         })}
-        {/* Spacer pushes card to bottom */}
+        {/* ── Recently Deleted virtual row — right after folders ── */}
+        {(() => {
+          const sel = selectedFolderId === VIRTUAL_FOLDER_TRASH;
+          return (
+            <div
+              onClick={() => { setSelectedFolder(VIRTUAL_FOLDER_TRASH); onSelectFolder?.(VIRTUAL_FOLDER_TRASH); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: mobile ? '11px 10px' : '5px 8px',
+                minHeight: mobile ? 44 : 32,
+                borderRadius: 7, cursor: 'pointer', userSelect: 'none',
+                background: sel ? 'rgba(229,62,62,0.18)' : 'transparent',
+                color: sel ? '#e53e3e' : 'var(--text-muted)',
+                marginTop: 2,
+              }}
+              onMouseEnter={(e) => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'rgba(229,62,62,0.07)'; }}
+              onMouseLeave={(e) => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: 0.7, flexShrink: 0 }}>
+                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" />
+              </svg>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                Recently Deleted
+              </span>
+              {trashCount > 0 && (
+                <span style={{ fontSize: 11, opacity: 0.6, minWidth: 14, textAlign: 'right' }}>{trashCount}</span>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Spacer pushes brand card to bottom */}
         <div style={{ flex: 1 }} />
+
         <BrandCard />
       </div>
     </div>

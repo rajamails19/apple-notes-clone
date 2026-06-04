@@ -52,6 +52,7 @@ export default function AppShell() {
     addNote, setSelectedNote,
     incrementFolderCount, decrementFolderCount,
     notes, folders,
+    setTrashCount,
   } = useStore();
 
   useRealtimeSync();
@@ -79,7 +80,7 @@ export default function AppShell() {
     setNotesW(loadW('pane-notes', 300));
   }, []);
 
-  // Load folders on mount
+  // Load folders on mount + trash count
   useEffect(() => {
     fetch('/api/folders')
       .then((r) => r.json())
@@ -87,11 +88,16 @@ export default function AppShell() {
         setFolders(data);
         if (data.length > 0) useStore.getState().setSelectedFolder(data[0].id);
       });
+    // Fetch initial trash count
+    fetch('/api/notes?folderId=__recently_deleted__')
+      .then((r) => r.json())
+      .then((data: unknown[]) => setTrashCount(Array.isArray(data) ? data.length : 0));
   }, []);
 
   // Load notes when folder changes
   const loadNotes = useCallback(async (folderId: string) => {
-    const ns = await fetch(`/api/notes?folderId=${folderId}`).then((r) => r.json());
+    const raw = await fetch(`/api/notes?folderId=${folderId}`).then((r) => r.json());
+    const ns: typeof notes = Array.isArray(raw) ? raw : [];
     setNotes(ns);
     if (ns.length > 0) setSelectedNote(ns[0].id);
     else setSelectedNote(null);
@@ -167,13 +173,19 @@ export default function AppShell() {
       if (e.key === 'Delete' && !meta) {
         const active = document.activeElement;
         if (active?.closest('.ProseMirror') || active?.tagName === 'INPUT') return;
-        const { selectedNoteId: nid, notes: ns, removeNote, decrementFolderCount: dec } = useStore.getState();
+        const { selectedNoteId: nid, notes: ns, trashNote, selectedFolderId: sfid } = useStore.getState();
         if (!nid) return;
         const n = ns.find((x) => x.id === nid);
         if (!n) return;
-        await fetch(`/api/notes/${nid}`, { method: 'DELETE' });
-        dec(n.folderId);
-        removeNote(nid);
+        // If already in trash, permanently delete; otherwise soft-delete
+        if (sfid === '__recently_deleted__') {
+          await fetch(`/api/notes/${nid}?permanent=true`, { method: 'DELETE' });
+          useStore.getState().restoreNote(nid); // removes from trash view
+          useStore.getState().setTrashCount(Math.max(0, useStore.getState().trashCount - 1));
+        } else {
+          await fetch(`/api/notes/${nid}`, { method: 'DELETE' });
+          trashNote(nid);
+        }
       }
     }
     window.addEventListener('keydown', onKey);
@@ -217,7 +229,7 @@ export default function AppShell() {
 
   // ─── Mobile header bar ─────────────────────────────────────────────────────
   const selectedFolder = folders.find((f) => f.id === selectedFolderId);
-  const selectedNote   = notes.find((n) => n.id === useStore.getState().selectedNoteId);
+  const selectedNote   = Array.isArray(notes) ? notes.find((n) => n.id === useStore.getState().selectedNoteId) : undefined;
 
   const mobileNavBar = isMobile ? (
     <div style={{

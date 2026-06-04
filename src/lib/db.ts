@@ -60,11 +60,13 @@ function initSchema(db: Database.Database) {
 }
 
 function runMigrations(db: Database.Database) {
-  // Migration: add pinned column if it doesn't exist yet
-  try {
-    db.exec('ALTER TABLE notes ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0');
-  } catch {
-    // Column already exists — safe to ignore
+  const migrations = [
+    'ALTER TABLE notes ADD COLUMN pinned    INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE notes ADD COLUMN trashed   INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE notes ADD COLUMN trashedAt TEXT',
+  ];
+  for (const sql of migrations) {
+    try { db.exec(sql); } catch { /* column already exists */ }
   }
 }
 

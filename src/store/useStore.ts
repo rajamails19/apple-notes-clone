@@ -5,6 +5,7 @@ interface AppState {
   // Data
   folders: Folder[];
   notes: Note[];
+  trashCount: number;
 
   // Selection
   selectedFolderId: string | null;
@@ -19,6 +20,7 @@ interface AppState {
   // ── Setters ───────────────────────────────────────
   setFolders: (f: Folder[]) => void;
   setNotes: (n: Note[]) => void;
+  setTrashCount: (n: number) => void;
   setSelectedFolder: (id: string | null) => void;
   setSelectedNote: (id: string | null) => void;
   setSearchQuery: (q: string) => void;
@@ -39,11 +41,14 @@ interface AppState {
   removeNote: (id: string) => void;
   pinNote: (id: string, pinned: boolean) => void;
   moveNote: (noteId: string, toFolderId: string) => void;
+  trashNote: (id: string) => void;
+  restoreNote: (id: string) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   folders: [],
   notes: [],
+  trashCount: 0,
   selectedFolderId: null,
   selectedNoteId: null,
   searchQuery: '',
@@ -53,6 +58,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setFolders:         (folders)    => set({ folders }),
   setNotes:           (notes)      => set({ notes }),
+  setTrashCount:      (trashCount) => set({ trashCount }),
   setSelectedFolder:  (id)         => set({ selectedFolderId: id, selectedNoteId: null, searchQuery: '' }),
   setSelectedNote:    (id)         => set({ selectedNoteId: id }),
   setSearchQuery:     (searchQuery)=> set({ searchQuery }),
@@ -96,6 +102,28 @@ export const useStore = create<AppState>((set, get) => ({
     const unpinned    = updated.filter((n) => !n.pinned);
     return { notes: [...pinnedNotes, ...unpinned] };
   }),
+
+  trashNote: (id) => {
+    const { notes, selectedFolderId } = get();
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    set((s) => ({
+      notes: s.notes.filter((n) => n.id !== id),
+      selectedNoteId: s.selectedNoteId === id ? null : s.selectedNoteId,
+      trashCount: s.trashCount + 1,
+      folders: s.folders.map((f) =>
+        f.id === note.folderId ? { ...f, noteCount: Math.max(0, (f.noteCount ?? 0) - 1) } : f
+      ),
+    }));
+  },
+
+  restoreNote: (id) => {
+    set((s) => ({
+      notes: s.notes.filter((n) => n.id !== id),
+      selectedNoteId: s.selectedNoteId === id ? null : s.selectedNoteId,
+      trashCount: Math.max(0, s.trashCount - 1),
+    }));
+  },
 
   moveNote: (noteId, toFolderId) => {
     const { notes, selectedFolderId } = get();
