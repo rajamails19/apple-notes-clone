@@ -171,61 +171,68 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
   );
 }
 
+const CARD_W = 150;
+
 function PhotoAvatar({ size }: { size: number }) {
   const [hovered, setHovered] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const [cardPos, setCardPos] = useState({ left: 0, bottom: 0 });
+
+  const onHoverStart = useCallback(() => {
+    if (avatarRef.current) {
+      const r = avatarRef.current.getBoundingClientRect();
+      // Align card left edge with avatar left edge, but clamp so it never goes off-screen
+      const rawLeft = r.left;
+      const clamped = Math.min(rawLeft, window.innerWidth - CARD_W - 12);
+      setCardPos({ left: Math.max(8, clamped), bottom: window.innerHeight - r.top + 10 });
+    }
+    setHovered(true);
+  }, []);
 
   return (
-    <motion.div
-      style={{
-        position: 'relative',
-        width: size, height: size,
-        borderRadius: '50%',
-        padding: 3,
-        background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
-        cursor: 'pointer',
-        flexShrink: 0,
-        zIndex: hovered ? 50 : 'auto',
-      }}
-      animate={hovered
-        ? { scale: 1.12, filter: 'drop-shadow(0 0 12px rgba(246,166,35,0.65))' }
-        : { scale: 1,    filter: 'drop-shadow(0 0 0px rgba(246,166,35,0))' }
-      }
-      transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-    >
-      {/* Photo */}
-      <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative' }}>
-        <img
-          src="https://github.com/rajamails19.png"
-          alt="Raja"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
-        />
-        {/* VIEW overlay on hover */}
-        <AnimatePresence>
-          {hovered && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'rgba(0,0,0,0.32)',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 2,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="white">
-                <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              <span style={{ fontSize: 7, fontWeight: 800, color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase' }}>View</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+    <>
+      <motion.div
+        ref={avatarRef}
+        style={{
+          position: 'relative', width: size, height: size,
+          borderRadius: '50%', padding: 3,
+          background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
+          cursor: 'pointer', flexShrink: 0,
+        }}
+        animate={hovered
+          ? { scale: 1.12, filter: 'drop-shadow(0 0 12px rgba(246,166,35,0.65))' }
+          : { scale: 1,    filter: 'drop-shadow(0 0 0px rgba(246,166,35,0))' }
+        }
+        transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+        onHoverStart={onHoverStart}
+        onHoverEnd={() => setHovered(false)}
+      >
+        <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative' }}>
+          <img src="https://github.com/rajamails19.png" alt="Raja"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+          <AnimatePresence>
+            {hovered && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.32)',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 2,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="white">
+                  <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <span style={{ fontSize: 7, fontWeight: 800, color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase' }}>View</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
 
-      {/* Floating preview card — pops UP above the avatar */}
+      {/* Fixed-position card — always fully visible regardless of sidebar width */}
       <AnimatePresence>
         {hovered && (
           <motion.div
@@ -233,24 +240,21 @@ function PhotoAvatar({ size }: { size: number }) {
             animate={{ opacity: 1, scale: 1,    y: 0  }}
             exit={{    opacity: 0, scale: 0.88, y: 10 }}
             transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
             style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 10px)',
-              left: -8,
-              width: 150,
-              borderRadius: 14,
-              overflow: 'hidden',
+              position: 'fixed',
+              left: cardPos.left,
+              bottom: cardPos.bottom,
+              width: CARD_W,
+              borderRadius: 14, overflow: 'hidden',
               boxShadow: '0 20px 50px rgba(0,0,0,0.40)',
               border: '1px solid rgba(255,255,255,0.12)',
-              pointerEvents: 'none',
               zIndex: 9999,
             }}
           >
-            <img
-              src="https://github.com/rajamails19.png"
-              alt="Raja preview"
-              style={{ width: '100%', height: 160, objectFit: 'cover', objectPosition: 'top', display: 'block' }}
-            />
+            <img src="https://github.com/rajamails19.png" alt="Raja preview"
+              style={{ width: '100%', height: 160, objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
             <div style={{ background: '#1a1a1a', padding: '8px 12px 10px' }}>
               <p style={{ margin: 0, color: 'white', fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>Raja Sekhar</p>
               <p style={{ margin: '2px 0 0', color: '#f6a623', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
@@ -260,7 +264,7 @@ function PhotoAvatar({ size }: { size: number }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </>
   );
 }
 
