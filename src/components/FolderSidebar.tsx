@@ -258,7 +258,7 @@ function PhotoAvatar({ size }: { size: number }) {
             <div style={{ background: '#1a1a1a', padding: '8px 12px 10px' }}>
               <p style={{ margin: 0, color: 'white', fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>Raja Sekhar</p>
               <p style={{ margin: '2px 0 0', color: '#f6a623', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-                Founder &amp; Builder
+                Founder &amp; Entrepreneur
               </p>
             </div>
           </motion.div>
@@ -292,7 +292,7 @@ function BrandCard() {
       >
         <PhotoAvatar size={26} />
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-          Noteva <span style={{ color: '#e8402a' }}>♥</span> Raja
+          NOTES-APP <span style={{ color: '#e8402a' }}>♥</span> Raja
         </span>
         {/* Expand chevron */}
         <svg style={{ marginLeft: 'auto' }} width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" color="var(--text-muted)">
@@ -343,7 +343,7 @@ function BrandCard() {
         fontSize: 9, fontWeight: 800, letterSpacing: '0.12em',
         textTransform: 'uppercase', color: 'var(--accent)',
       }}>
-        ✦ Noteva
+        ✦ NOTES-APP
       </p>
 
       {/* Credit */}
