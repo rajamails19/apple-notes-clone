@@ -341,16 +341,8 @@ export default function AppShell() {
         id="app-shell"
         style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--bg-editor)' }}
       >
-        {/* Mobile nav bar replaces MenuBar + TopBar on folders/notes panels */}
-        {mobilePanel !== 'editor' ? (
-          mobileNavBar
-        ) : (
-          <>
-            {mobileNavBar}
-            {/* Scrollable formatting toolbar on editor panel */}
-            <TopBar mobile />
-          </>
-        )}
+        {/* Mobile nav bar */}
+        {mobileNavBar}
 
         {/* Panels — one visible at a time */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -372,13 +364,15 @@ export default function AppShell() {
             <NotesSidebar onSelectNote={(id) => { handleNoteSelect(id); }} mobile />
           </div>
 
-          {/* Editor panel */}
+          {/* Editor panel — always mounted so TipTap registers in useEditorStore */}
           <div style={{
             position: 'absolute', inset: 0,
             display: mobilePanel === 'editor' ? 'flex' : 'none',
             flexDirection: 'column', overflow: 'hidden',
           }}>
-            <NoteEditor />
+            {/* TopBar inside editor panel so it renders after editor mounts */}
+            <TopBar mobile />
+            <NoteEditor mobile />
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { useContextMenu } from '@/store/useContextMenu';
 import { useSyncStatus } from '@/store/useSyncStatus';
 
-export default function NoteEditor() {
+export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
   const { notes, selectedNoteId, updateNote } = useStore();
   const note = notes.find((n) => n.id === selectedNoteId) ?? null;
   const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -171,7 +171,7 @@ export default function NoteEditor() {
   if (!note) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
-        <EditorToolbar />
+        {!mobile && <EditorToolbar />}
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
@@ -192,7 +192,7 @@ export default function NoteEditor() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
-      <EditorToolbar />
+      {!mobile && <EditorToolbar />}
       <div
         style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, overflow: 'hidden auto' }}
         onContextMenu={handleEditorContextMenu}
