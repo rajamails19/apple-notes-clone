@@ -335,7 +335,7 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
       flexShrink: 0, flexWrap: 'nowrap',
       height: mobile ? 44 : 38,
       overflowX: mobile ? 'auto' : 'visible',
-      overflowY: 'hidden',
+      overflowY: mobile ? 'hidden' : 'visible',
       WebkitOverflowScrolling: 'touch',
       scrollbarWidth: 'none',
     } as React.CSSProperties}>
