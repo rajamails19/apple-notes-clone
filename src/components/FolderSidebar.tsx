@@ -183,14 +183,18 @@ function BrandCard() {
     }}>
       {/* Avatar + title row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
-        {/* Gradient avatar */}
+        {/* Photo avatar with gradient ring */}
         <div style={{
-          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+          padding: 2,
           background: 'linear-gradient(135deg, #f6a623 0%, #e8402a 50%, #c040b0 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 2px 8px rgba(232,160,32,0.35)',
         }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-0.5px' }}>R</span>
+          <img
+            src="https://github.com/rajamails19.png"
+            alt="Raja"
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+          />
         </div>
         <div>
           <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1 }}>
