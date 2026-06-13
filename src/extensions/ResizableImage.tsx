@@ -10,15 +10,21 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   const startW = useRef(0);
   const pinchStartDistance = useRef(0);
   const pinchStartWidth = useRef(0);
+  const touchMode = useRef<'idle' | 'pan' | 'pinch'>('idle');
+  const lastPanY = useRef(0);
 
   const clampWidth = useCallback((width: number) => {
     return Math.max(60, Math.min(width, 1400));
   }, []);
 
-  const touchDistance = (touches: React.TouchList | TouchList) => {
+  const touchDistance = useCallback((touches: React.TouchList | TouchList) => {
     const [a, b] = [touches[0], touches[1]];
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  };
+  }, []);
+
+  const getEditorScroller = useCallback(() => {
+    return imgRef.current?.closest('.editor-scroll') as HTMLElement | null;
+  }, []);
 
   const startResize = useCallback((e: React.PointerEvent, pos: string) => {
     e.preventDefault();
@@ -50,24 +56,55 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   }, [clampWidth, node.attrs.width, updateAttributes]);
 
   const startPinch = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 2) return;
-    e.preventDefault();
     e.stopPropagation();
-    document.body.classList.add('resizing');
-    pinchStartDistance.current = touchDistance(e.touches);
-    pinchStartWidth.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
-  }, [node.attrs.width]);
+    if (e.touches.length === 1) {
+      touchMode.current = 'pan';
+      lastPanY.current = e.touches[0].clientY;
+      return;
+    }
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      touchMode.current = 'pinch';
+      document.body.classList.add('resizing');
+      pinchStartDistance.current = touchDistance(e.touches);
+      pinchStartWidth.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
+    }
+  }, [node.attrs.width, touchDistance]);
 
   const movePinch = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 2 || !pinchStartDistance.current) return;
-    e.preventDefault();
     e.stopPropagation();
-    const scale = touchDistance(e.touches) / pinchStartDistance.current;
-    updateAttributes({ width: clampWidth(pinchStartWidth.current * scale) });
-  }, [clampWidth, updateAttributes]);
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      if (touchMode.current !== 'pinch' || !pinchStartDistance.current) {
+        touchMode.current = 'pinch';
+        document.body.classList.add('resizing');
+        pinchStartDistance.current = touchDistance(e.touches);
+        pinchStartWidth.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
+      }
+      const scale = touchDistance(e.touches) / pinchStartDistance.current;
+      updateAttributes({ width: clampWidth(pinchStartWidth.current * scale) });
+      return;
+    }
 
-  const endPinch = useCallback(() => {
-    if (!pinchStartDistance.current) return;
+    if (e.touches.length === 1 && touchMode.current === 'pan') {
+      const scroller = getEditorScroller();
+      if (!scroller) return;
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      scroller.scrollTop += lastPanY.current - y;
+      lastPanY.current = y;
+    }
+  }, [clampWidth, getEditorScroller, node.attrs.width, touchDistance, updateAttributes]);
+
+  const endPinch = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchMode.current = 'pan';
+      lastPanY.current = e.touches[0].clientY;
+      pinchStartDistance.current = 0;
+      document.body.classList.remove('resizing');
+      return;
+    }
+    touchMode.current = 'idle';
     pinchStartDistance.current = 0;
     document.body.classList.remove('resizing');
   }, []);
@@ -81,7 +118,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
-    touchAction: 'pan-y',
+    touchAction: 'none',
   };
 
   const imgStyle: React.CSSProperties = {
@@ -91,6 +128,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     borderRadius: 6,
     outline: selected ? '2px solid #3b82f6' : 'none',
     outlineOffset: 2,
+    touchAction: 'none',
   };
 
   return (
