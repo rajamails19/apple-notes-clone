@@ -10,8 +10,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Allow pinch-to-zoom on mobile (needed for image zoom + natural scroll)
 };
 
 export default function RootLayout({
@@ -21,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" style={{ height: '100%' }}>
-      <body style={{ height: '100%', margin: 0, overflow: 'hidden' }}>
+      <body style={{ height: '100%', margin: 0, overflow: 'hidden', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -194,7 +194,7 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
       {!mobile && <EditorToolbar />}
       <div
-        style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, overflow: 'hidden auto' }}
+        style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, overflow: 'hidden auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         onContextMenu={handleEditorContextMenu}
       >
         {/* Title + date */}

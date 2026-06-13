@@ -334,7 +334,7 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
         {!selectedFolderId ? (
           <EmptyState icon="📁" title="Select a folder" sub="Choose a folder from the left to see your notes" />
         ) : filtered.length === 0 ? (
