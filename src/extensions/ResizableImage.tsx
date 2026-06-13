@@ -2,7 +2,7 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 
 function ResizableImageView({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const imgRef = useRef<HTMLImageElement>(null);
@@ -10,21 +10,59 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   const startW = useRef(0);
   const pinchStartDistance = useRef(0);
   const pinchStartWidth = useRef(0);
-  const touchMode = useRef<'idle' | 'pan' | 'pinch'>('idle');
-  const lastPanY = useRef(0);
+  // Keep refs to latest values so useEffect closure never goes stale
+  const widthRef = useRef<number | null>(node.attrs.width ?? null);
+  const updateRef = useRef(updateAttributes);
+  widthRef.current = node.attrs.width ?? null;
+  updateRef.current = updateAttributes;
 
   const clampWidth = useCallback((width: number) => {
     return Math.max(60, Math.min(width, 1400));
   }, []);
 
-  const touchDistance = useCallback((touches: React.TouchList | TouchList) => {
-    const [a, b] = [touches[0], touches[1]];
-    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  }, []);
+  // Attach non-passive touch listeners so preventDefault() actually works.
+  // React 17+ attaches synthetic touch handlers passively (can't preventDefault).
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
 
-  const getEditorScroller = useCallback(() => {
-    return imgRef.current?.closest('.editor-scroll') as HTMLElement | null;
-  }, []);
+    const dist = (t: TouchList) => Math.hypot(
+      t[0].clientX - t[1].clientX,
+      t[0].clientY - t[1].clientY,
+    );
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      e.preventDefault(); // stop browser viewport-zoom on 2-finger pinch
+      pinchStartDistance.current = dist(e.touches);
+      pinchStartWidth.current = widthRef.current ?? img.offsetWidth ?? 400;
+      document.body.classList.add('resizing');
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !pinchStartDistance.current) return;
+      e.preventDefault();
+      const scale = dist(e.touches) / pinchStartDistance.current;
+      updateRef.current({ width: Math.max(60, Math.min(pinchStartWidth.current * scale, 1400)) });
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length > 0) return; // fingers still on screen
+      pinchStartDistance.current = 0;
+      document.body.classList.remove('resizing');
+    };
+
+    img.addEventListener('touchstart',  onStart, { passive: false });
+    img.addEventListener('touchmove',   onMove,  { passive: false });
+    img.addEventListener('touchend',    onEnd);
+    img.addEventListener('touchcancel', onEnd);
+    return () => {
+      img.removeEventListener('touchstart',  onStart);
+      img.removeEventListener('touchmove',   onMove);
+      img.removeEventListener('touchend',    onEnd);
+      img.removeEventListener('touchcancel', onEnd);
+    };
+  }, []); // runs once on mount; uses refs for fresh values
 
   const startResize = useCallback((e: React.PointerEvent, pos: string) => {
     e.preventDefault();
@@ -55,59 +93,6 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     document.addEventListener('pointerup', onUp);
   }, [clampWidth, node.attrs.width, updateAttributes]);
 
-  const startPinch = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    if (e.touches.length === 1) {
-      touchMode.current = 'pan';
-      lastPanY.current = e.touches[0].clientY;
-      return;
-    }
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      touchMode.current = 'pinch';
-      document.body.classList.add('resizing');
-      pinchStartDistance.current = touchDistance(e.touches);
-      pinchStartWidth.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
-    }
-  }, [node.attrs.width, touchDistance]);
-
-  const movePinch = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      if (touchMode.current !== 'pinch' || !pinchStartDistance.current) {
-        touchMode.current = 'pinch';
-        document.body.classList.add('resizing');
-        pinchStartDistance.current = touchDistance(e.touches);
-        pinchStartWidth.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
-      }
-      const scale = touchDistance(e.touches) / pinchStartDistance.current;
-      updateAttributes({ width: clampWidth(pinchStartWidth.current * scale) });
-      return;
-    }
-
-    if (e.touches.length === 1 && touchMode.current === 'pan') {
-      const scroller = getEditorScroller();
-      if (!scroller) return;
-      e.preventDefault();
-      const y = e.touches[0].clientY;
-      scroller.scrollTop += lastPanY.current - y;
-      lastPanY.current = y;
-    }
-  }, [clampWidth, getEditorScroller, node.attrs.width, touchDistance, updateAttributes]);
-
-  const endPinch = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      touchMode.current = 'pan';
-      lastPanY.current = e.touches[0].clientY;
-      pinchStartDistance.current = 0;
-      document.body.classList.remove('resizing');
-      return;
-    }
-    touchMode.current = 'idle';
-    pinchStartDistance.current = 0;
-    document.body.classList.remove('resizing');
-  }, []);
 
   const align = node.attrs.align ?? 'left';
   const marginLeft = node.attrs.marginLeft ?? 0;
@@ -118,7 +103,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
-    touchAction: 'none',
+    touchAction: 'pan-y', // 1-finger vertical swipe scrolls page; 2-finger pinch handled by native listener
   };
 
   const imgStyle: React.CSSProperties = {
@@ -128,7 +113,6 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     borderRadius: 6,
     outline: selected ? '2px solid #3b82f6' : 'none',
     outlineOffset: 2,
-    touchAction: 'none',
   };
 
   return (
@@ -140,10 +124,6 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
           alt={node.attrs.alt ?? ''}
           style={imgStyle}
           draggable={false}
-          onTouchStart={startPinch}
-          onTouchMove={movePinch}
-          onTouchEnd={endPinch}
-          onTouchCancel={endPinch}
         />
 
         {selected && (
