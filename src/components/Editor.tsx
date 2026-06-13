@@ -203,6 +203,14 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
             value={note.title}
             onChange={handleTitleChange}
             placeholder="Title"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                // Move focus into the ProseMirror editor body
+                const proseMirror = document.querySelector<HTMLElement>('.ProseMirror');
+                if (proseMirror) { proseMirror.focus(); }
+              }
+            }}
             style={{
               width: '100%', fontSize: 22, fontWeight: 700,
               color: 'var(--text-primary)', background: 'transparent',

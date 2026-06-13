@@ -34,6 +34,8 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
     });
     updateFolder(await res.json());
     setEditingId(null);
+    // Stay on this folder so user can start adding notes immediately
+    useStore.getState().setSelectedFolder(id);
   }
 
   async function deleteFolder(id: string) {

@@ -9,6 +9,7 @@ import NotesSidebar from './NotesSidebar';
 import NoteEditor from './Editor';
 import ContextMenu from './ContextMenu';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { createClient } from '@/lib/supabase/client';
 
 const MIN_FOLDER = 160;
 const MIN_NOTES  = 200;
@@ -54,6 +55,14 @@ export default function AppShell() {
     notes, folders,
     setTrashCount,
   } = useStore();
+
+  const [isGuest, setIsGuest] = useState(false);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setIsGuest(data.user?.is_anonymous === true);
+    });
+  }, []);
 
   useRealtimeSync();
 
@@ -297,6 +306,26 @@ export default function AppShell() {
     </div>
   ) : null;
 
+  // ─── Guest banner ──────────────────────────────────────────────────────────
+  const guestBanner = isGuest ? (
+    <div style={{
+      background: '#fef3c7', borderBottom: '1px solid #fcd34d',
+      padding: '6px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      fontSize: 12, color: '#92400e', flexShrink: 0,
+    }}>
+      <span>✏️ Guest mode — notes will be lost when you end this session</span>
+      <button
+        onClick={() => { window.location.href = '/login?mode=signin'; }}
+        style={{
+          background: '#92400e', color: 'white', border: 'none',
+          borderRadius: 6, padding: '2px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        Sign in to save
+      </button>
+    </div>
+  ) : null;
+
   // ─── Desktop layout ────────────────────────────────────────────────────────
   if (!isMobile) {
     return (
@@ -306,6 +335,7 @@ export default function AppShell() {
           style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-editor)' }}
         >
           <MenuBar />
+          {guestBanner}
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             {showFolderSidebar && (
@@ -343,6 +373,7 @@ export default function AppShell() {
       >
         {/* Mobile nav bar */}
         {mobileNavBar}
+        {guestBanner}
 
         {/* Panels — one visible at a time */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
