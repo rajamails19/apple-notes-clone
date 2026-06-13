@@ -47,6 +47,8 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
+    // Allow vertical scroll + pinch-zoom when touching on image on mobile
+    touchAction: 'pan-y pinch-zoom',
   };
 
   const imgStyle: React.CSSProperties = {

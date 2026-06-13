@@ -55,9 +55,14 @@
 /* ── Reset ───────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body {
+html {
   height: 100%;
-  overflow: hidden;
+  /* Do NOT set overflow:hidden on html — iOS blocks all inner touch-scroll when this is set */
+}
+
+body {
+  height: 100%;
+  overflow: hidden;   /* keep body hidden so the app shell controls scroll */
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   background: var(--bg-editor);
@@ -73,6 +78,13 @@ html, body {
   line-height: 1.72;
   color: var(--text-primary);
   caret-color: var(--accent);
+  touch-action: pan-y pinch-zoom; /* allow vertical scroll + pinch on mobile */
+}
+
+@media (max-width: 767px) {
+  .ProseMirror {
+    min-height: 200px; /* shorter min-height on mobile so content fits and scroll works */
+  }
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {

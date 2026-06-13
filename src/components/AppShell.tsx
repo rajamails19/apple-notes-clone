@@ -382,6 +382,7 @@ export default function AppShell() {
             position: 'absolute', inset: 0,
             display: mobilePanel === 'folders' ? 'flex' : 'none',
             flexDirection: 'column', overflow: 'hidden',
+            touchAction: 'pan-y',
           }}>
             <FolderSidebar onSelectFolder={(id) => { handleFolderSelect(id); }} mobile />
           </div>
@@ -391,6 +392,7 @@ export default function AppShell() {
             position: 'absolute', inset: 0,
             display: mobilePanel === 'notes' ? 'flex' : 'none',
             flexDirection: 'column', overflow: 'hidden',
+            touchAction: 'pan-y',
           }}>
             <NotesSidebar onSelectNote={(id) => { handleNoteSelect(id); }} mobile />
           </div>
@@ -400,6 +402,7 @@ export default function AppShell() {
             position: 'absolute', inset: 0,
             display: mobilePanel === 'editor' ? 'flex' : 'none',
             flexDirection: 'column', overflow: 'hidden',
+            touchAction: 'pan-y pinch-zoom',
           }}>
             {/* TopBar inside editor panel so it renders after editor mounts */}
             <TopBar mobile />
