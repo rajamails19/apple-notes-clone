@@ -20,8 +20,10 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     return Math.max(60, Math.min(width, 1400));
   }, []);
 
-  // Attach non-passive touch listeners so preventDefault() actually works.
-  // React 17+ attaches synthetic touch handlers passively (can't preventDefault).
+  // Non-passive touch listeners on the img so preventDefault() works.
+  // touchAction:'none' on the img hands ALL touch events to JS.
+  // 1-finger → we manually relay scroll to .editor-scroll
+  // 2-finger → pinch resize (preventDefault stops viewport zoom)
   useEffect(() => {
     const img = imgRef.current;
     if (!img) return;
@@ -31,23 +33,35 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
       t[0].clientY - t[1].clientY,
     );
 
+    let lastY = 0;
+
     const onStart = (e: TouchEvent) => {
-      if (e.touches.length !== 2) return;
-      e.preventDefault(); // stop browser viewport-zoom on 2-finger pinch
-      pinchStartDistance.current = dist(e.touches);
-      pinchStartWidth.current = widthRef.current ?? img.offsetWidth ?? 400;
-      document.body.classList.add('resizing');
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        pinchStartDistance.current = dist(e.touches);
+        pinchStartWidth.current = widthRef.current ?? img.offsetWidth ?? 400;
+        document.body.classList.add('resizing');
+      } else if (e.touches.length === 1) {
+        lastY = e.touches[0].clientY;
+      }
     };
 
     const onMove = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !pinchStartDistance.current) return;
       e.preventDefault();
-      const scale = dist(e.touches) / pinchStartDistance.current;
-      updateRef.current({ width: Math.max(60, Math.min(pinchStartWidth.current * scale, 1400)) });
+      if (e.touches.length === 2 && pinchStartDistance.current) {
+        const scale = dist(e.touches) / pinchStartDistance.current;
+        updateRef.current({ width: Math.max(60, Math.min(pinchStartWidth.current * scale, 1400)) });
+      } else if (e.touches.length === 1) {
+        // Relay 1-finger scroll to the editor scroll container
+        const scroller = img.closest('.editor-scroll') as HTMLElement | null;
+        if (scroller) {
+          scroller.scrollTop += lastY - e.touches[0].clientY;
+          lastY = e.touches[0].clientY;
+        }
+      }
     };
 
-    const onEnd = (e: TouchEvent) => {
-      if (e.touches.length > 0) return; // fingers still on screen
+    const onEnd = () => {
       pinchStartDistance.current = 0;
       document.body.classList.remove('resizing');
     };
@@ -62,7 +76,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
       img.removeEventListener('touchend',    onEnd);
       img.removeEventListener('touchcancel', onEnd);
     };
-  }, []); // runs once on mount; uses refs for fresh values
+  }, []); // runs once; uses refs for always-fresh values
 
   const startResize = useCallback((e: React.PointerEvent, pos: string) => {
     e.preventDefault();
@@ -113,6 +127,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     borderRadius: 6,
     outline: selected ? '2px solid #3b82f6' : 'none',
     outlineOffset: 2,
+    touchAction: 'none', // give all touch events to our JS handler
   };
 
   return (
