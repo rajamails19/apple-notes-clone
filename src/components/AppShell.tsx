@@ -369,20 +369,19 @@ export default function AppShell() {
     <>
       <div
         id="app-shell"
-        style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--bg-editor)' }}
+        style={{ display: 'flex', flexDirection: 'column', height: '100dvh', minHeight: 0, overflow: 'clip', background: 'var(--bg-editor)' }}
       >
         {/* Mobile nav bar */}
         {mobileNavBar}
         {guestBanner}
 
         {/* Panels — one visible at a time */}
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'clip', position: 'relative' }}>
           {/* Folders panel */}
           <div style={{
             position: 'absolute', inset: 0,
             display: mobilePanel === 'folders' ? 'flex' : 'none',
-            flexDirection: 'column', overflow: 'hidden',
-            touchAction: 'pan-y',
+            flexDirection: 'column', minHeight: 0, overflow: 'clip',
           }}>
             <FolderSidebar onSelectFolder={(id) => { handleFolderSelect(id); }} mobile />
           </div>
@@ -391,8 +390,7 @@ export default function AppShell() {
           <div style={{
             position: 'absolute', inset: 0,
             display: mobilePanel === 'notes' ? 'flex' : 'none',
-            flexDirection: 'column', overflow: 'hidden',
-            touchAction: 'pan-y',
+            flexDirection: 'column', minHeight: 0, overflow: 'clip',
           }}>
             <NotesSidebar onSelectNote={(id) => { handleNoteSelect(id); }} mobile />
           </div>
@@ -401,8 +399,7 @@ export default function AppShell() {
           <div style={{
             position: 'absolute', inset: 0,
             display: mobilePanel === 'editor' ? 'flex' : 'none',
-            flexDirection: 'column', overflow: 'hidden',
-            touchAction: 'pan-y pinch-zoom',
+            flexDirection: 'column', minHeight: 0, overflow: 'clip',
           }}>
             {/* TopBar inside editor panel so it renders after editor mounts */}
             <TopBar mobile />

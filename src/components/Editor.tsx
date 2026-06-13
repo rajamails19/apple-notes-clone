@@ -170,7 +170,7 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
 
   if (!note) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
         {!mobile && <EditorToolbar />}
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',
@@ -191,10 +191,11 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
       {!mobile && <EditorToolbar />}
       <div
-        style={{ flex: 1, overflowX: 'hidden', overflowY: 'scroll', paddingBottom: 80, WebkitOverflowScrolling: 'touch', touchAction: 'pan-y pinch-zoom' } as React.CSSProperties}
+        className="editor-scroll"
+        style={{ flex: 1, minHeight: 0, overflowX: 'hidden', overflowY: 'auto', paddingBottom: 80, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' } as React.CSSProperties}
         onContextMenu={handleEditorContextMenu}
       >
         {/* Title + date */}

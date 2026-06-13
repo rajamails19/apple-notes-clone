@@ -62,7 +62,7 @@ html {
 
 body {
   height: 100%;
-  overflow: hidden;   /* keep body hidden so the app shell controls scroll */
+  overflow: clip;   /* clip without creating a scroll container — lets inner divs scroll on iOS */
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   background: var(--bg-editor);

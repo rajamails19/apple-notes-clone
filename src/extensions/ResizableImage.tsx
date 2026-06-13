@@ -8,6 +8,17 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   const imgRef = useRef<HTMLImageElement>(null);
   const startX = useRef(0);
   const startW = useRef(0);
+  const pinchStartDistance = useRef(0);
+  const pinchStartWidth = useRef(0);
+
+  const clampWidth = useCallback((width: number) => {
+    return Math.max(60, Math.min(width, 1400));
+  }, []);
+
+  const touchDistance = (touches: React.TouchList | TouchList) => {
+    const [a, b] = [touches[0], touches[1]];
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  };
 
   const startResize = useCallback((e: React.PointerEvent, pos: string) => {
     e.preventDefault();
@@ -26,7 +37,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
       const delta = invertX
         ? startX.current - ev.clientX   // nw / sw / w: left = grow
         : ev.clientX - startX.current;  // ne / se / e: right = grow
-      const w = Math.max(60, Math.min(startW.current + delta, 1400));
+      const w = clampWidth(startW.current + delta);
       updateAttributes({ width: w });
     };
     const onUp = () => {
@@ -36,7 +47,30 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     };
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
-  }, [node.attrs.width, updateAttributes]);
+  }, [clampWidth, node.attrs.width, updateAttributes]);
+
+  const startPinch = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.classList.add('resizing');
+    pinchStartDistance.current = touchDistance(e.touches);
+    pinchStartWidth.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
+  }, [node.attrs.width]);
+
+  const movePinch = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 2 || !pinchStartDistance.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const scale = touchDistance(e.touches) / pinchStartDistance.current;
+    updateAttributes({ width: clampWidth(pinchStartWidth.current * scale) });
+  }, [clampWidth, updateAttributes]);
+
+  const endPinch = useCallback(() => {
+    if (!pinchStartDistance.current) return;
+    pinchStartDistance.current = 0;
+    document.body.classList.remove('resizing');
+  }, []);
 
   const align = node.attrs.align ?? 'left';
   const marginLeft = node.attrs.marginLeft ?? 0;
@@ -47,8 +81,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
-    // Allow vertical scroll + pinch-zoom when touching on image on mobile
-    touchAction: 'pan-y pinch-zoom',
+    touchAction: 'pan-y',
   };
 
   const imgStyle: React.CSSProperties = {
@@ -63,7 +96,17 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   return (
     <NodeViewWrapper style={wrapStyle} data-drag-handle>
       <span style={{ position: 'relative', display: 'inline-block' }}>
-        <img ref={imgRef} src={node.attrs.src} alt={node.attrs.alt ?? ''} style={imgStyle} draggable={false} />
+        <img
+          ref={imgRef}
+          src={node.attrs.src}
+          alt={node.attrs.alt ?? ''}
+          style={imgStyle}
+          draggable={false}
+          onTouchStart={startPinch}
+          onTouchMove={movePinch}
+          onTouchEnd={endPinch}
+          onTouchCancel={endPinch}
+        />
 
         {selected && (
           <>

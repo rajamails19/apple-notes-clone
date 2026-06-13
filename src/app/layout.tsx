@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" style={{ height: '100%' }}>
-      <body style={{ height: '100%', margin: 0, overflow: 'hidden', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+      <body style={{ height: '100%', margin: 0, overflow: 'clip' } as React.CSSProperties}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
