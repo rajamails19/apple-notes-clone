@@ -9,31 +9,42 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   const startX = useRef(0);
   const startW = useRef(0);
 
-  const startResize = useCallback((e: React.MouseEvent) => {
+  const startResize = useCallback((e: React.PointerEvent, pos: string) => {
     e.preventDefault();
     e.stopPropagation();
+    // Capture the pointer so all subsequent pointer events go to this element
+    // even if the mouse leaves it — this also prevents TipTap's drag-handle
+    // from stealing the event and moving the node vertically.
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
     document.body.classList.add('resizing');
     startX.current = e.clientX;
     startW.current = node.attrs.width ?? imgRef.current?.offsetWidth ?? 400;
+    const invertX = pos.includes('w'); // left-side handles: drag left = grow
 
-    const onMove = (ev: MouseEvent) => {
-      const w = Math.max(60, Math.min(startW.current + (ev.clientX - startX.current), 1400));
+    const onMove = (ev: PointerEvent) => {
+      const delta = invertX
+        ? startX.current - ev.clientX   // nw / sw / w: left = grow
+        : ev.clientX - startX.current;  // ne / se / e: right = grow
+      const w = Math.max(60, Math.min(startW.current + delta, 1400));
       updateAttributes({ width: w });
     };
     const onUp = () => {
       document.body.classList.remove('resizing');
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
     };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   }, [node.attrs.width, updateAttributes]);
 
   const align = node.attrs.align ?? 'left';
+  const marginLeft = node.attrs.marginLeft ?? 0;
   const wrapStyle: React.CSSProperties = {
     display: 'block',
     textAlign: align,
     margin: '8px 0',
+    marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
   };
@@ -61,7 +72,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
               return (
                 <span
                   key={pos}
-                  onMouseDown={isBottom && isRight ? startResize : undefined}
+                  onPointerDown={(e) => startResize(e, pos)}
                   style={{
                     position: 'absolute',
                     width: 10, height: 10,
@@ -73,6 +84,30 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
                     left: isRight ? undefined : -5,
                     right: isRight ? -5 : undefined,
                     cursor: `${pos}-resize`,
+                    zIndex: 10,
+                  }}
+                />
+              );
+            })}
+
+            {/* Mid-side handles (left & right centers for width resize) */}
+            {(['w','e'] as const).map((pos) => {
+              const isRight = pos === 'e';
+              return (
+                <span
+                  key={`mid-${pos}`}
+                  onPointerDown={(e) => startResize(e, pos)}
+                  style={{
+                    position: 'absolute',
+                    width: 8, height: 24,
+                    background: '#3b82f6',
+                    borderRadius: 4,
+                    border: '1.5px solid white',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    left: isRight ? undefined : -4,
+                    right: isRight ? -4 : undefined,
+                    cursor: 'ew-resize',
                     zIndex: 10,
                   }}
                 />
@@ -151,7 +186,22 @@ export const ResizableImage = Node.create({
     return {
       src:   { default: null },
       alt:   { default: null },
-      width: { default: null },
+      // Parse width back from the inline style on reload
+      width: {
+        default: null,
+        parseHTML: (el) => {
+          const w = (el as HTMLElement).style.width;
+          return w ? parseInt(w, 10) : null;
+        },
+      },
+      // Parse marginLeft back from the inline style on reload
+      marginLeft: {
+        default: 0,
+        parseHTML: (el) => {
+          const ml = (el as HTMLElement).style.marginLeft;
+          return ml ? parseInt(ml, 10) : 0;
+        },
+      },
       align: { default: 'left' },
     };
   },
@@ -161,12 +211,34 @@ export const ResizableImage = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const { width, align, ...rest } = HTMLAttributes;
+    const { width, align, marginLeft, ...rest } = HTMLAttributes;
     const style = [
-      width ? `width:${width}px` : '',
-      align && align !== 'left' ? `text-align:${align}` : '',
+      width      ? `width:${width}px`            : '',
+      marginLeft ? `margin-left:${marginLeft}px`  : '',
     ].filter(Boolean).join(';');
     return ['img', mergeAttributes(rest, style ? { style } : {})];
+  },
+
+  addKeyboardShortcuts() {
+    const STEP = 24; // px per Tab press, like a tab stop
+    return {
+      Tab: ({ editor }) => {
+        const { selection } = editor.state;
+        const node = selection.$anchor.nodeAfter ?? editor.state.doc.nodeAt(selection.from);
+        if (!node || node.type.name !== 'image') return false;
+        const cur = node.attrs.marginLeft ?? 0;
+        editor.commands.updateAttributes('image', { marginLeft: cur + STEP });
+        return true; // prevent default Tab behaviour
+      },
+      'Shift-Tab': ({ editor }) => {
+        const { selection } = editor.state;
+        const node = selection.$anchor.nodeAfter ?? editor.state.doc.nodeAt(selection.from);
+        if (!node || node.type.name !== 'image') return false;
+        const cur = node.attrs.marginLeft ?? 0;
+        editor.commands.updateAttributes('image', { marginLeft: Math.max(0, cur - STEP) });
+        return true;
+      },
+    };
   },
 
   addNodeView() {
