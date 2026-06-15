@@ -2,67 +2,14 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback } from 'react';
 
 function ResizableImageView({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const startX = useRef(0);
   const startW = useRef(0);
-  const pinchStartDistance = useRef(0);
-  const pinchStartWidth = useRef(0);
-  // Keep refs to latest values so useEffect closure never goes stale
-  const widthRef = useRef<number | null>(node.attrs.width ?? null);
-  const updateRef = useRef(updateAttributes);
-  widthRef.current = node.attrs.width ?? null;
-  updateRef.current = updateAttributes;
-
   const clampWidth = useCallback((width: number) => {
     return Math.max(60, Math.min(width, 1400));
-  }, []);
-
-  // Non-passive touch listeners — only intercept 2-finger pinch.
-  // 1-finger scroll is handled natively by touchAction:'pan-y pinch-zoom' on the wrapper.
-  // preventDefault() on 2-finger gestures stops viewport zoom; our resize fires instead.
-  useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
-
-    const dist = (t: TouchList) => Math.hypot(
-      t[0].clientX - t[1].clientX,
-      t[0].clientY - t[1].clientY,
-    );
-
-    const onStart = (e: TouchEvent) => {
-      if (e.touches.length !== 2) return;
-      e.preventDefault();
-      pinchStartDistance.current = dist(e.touches);
-      pinchStartWidth.current = widthRef.current ?? img.offsetWidth ?? 400;
-      document.body.classList.add('resizing');
-    };
-
-    const onMove = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !pinchStartDistance.current) return;
-      e.preventDefault();
-      const scale = dist(e.touches) / pinchStartDistance.current;
-      updateRef.current({ width: Math.max(60, Math.min(pinchStartWidth.current * scale, 1400)) });
-    };
-
-    const onEnd = (e: TouchEvent) => {
-      if (e.touches.length >= 2) return;
-      pinchStartDistance.current = 0;
-      document.body.classList.remove('resizing');
-    };
-
-    img.addEventListener('touchstart',  onStart, { passive: false });
-    img.addEventListener('touchmove',   onMove,  { passive: false });
-    img.addEventListener('touchend',    onEnd);
-    img.addEventListener('touchcancel', onEnd);
-    return () => {
-      img.removeEventListener('touchstart',  onStart);
-      img.removeEventListener('touchmove',   onMove);
-      img.removeEventListener('touchend',    onEnd);
-      img.removeEventListener('touchcancel', onEnd);
-    };
   }, []);
 
   const startResize = useCallback((e: React.PointerEvent, pos: string) => {
@@ -104,9 +51,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
-    // pan-y: 1-finger scroll works natively
-    // pinch-zoom: browser delivers pinch events so our non-passive listener can preventDefault
-    touchAction: 'pan-y pinch-zoom',
+    touchAction: 'pan-y',
   };
 
   const imgStyle: React.CSSProperties = {
