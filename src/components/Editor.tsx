@@ -195,7 +195,7 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
       {!mobile && <EditorToolbar />}
       <div
         className="editor-scroll"
-        style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto', paddingBottom: 80, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-x pan-y pinch-zoom' } as React.CSSProperties}
+        style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto', paddingBottom: 80, WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', overscrollBehaviorX: 'auto', touchAction: 'pan-x pan-y pinch-zoom' } as React.CSSProperties}
         onContextMenu={handleEditorContextMenu}
       >
         {/* Title + date */}

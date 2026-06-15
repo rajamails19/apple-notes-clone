@@ -51,7 +51,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
-    touchAction: 'pan-y pinch-zoom',
+    touchAction: 'pan-x pan-y pinch-zoom',
   };
 
   const imgStyle: React.CSSProperties = {
@@ -61,7 +61,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     borderRadius: 6,
     outline: selected ? '2px solid #3b82f6' : 'none',
     outlineOffset: 2,
-    // No touchAction override — inherits pan-y pinch-zoom from wrapper
+    touchAction: 'pan-x pan-y pinch-zoom', // override TipTap drag-handle's touch-action:none
   };
 
   return (
