@@ -2,7 +2,7 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 
 function ResizableImageView({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const imgRef = useRef<HTMLImageElement>(null);
