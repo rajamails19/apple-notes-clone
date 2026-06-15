@@ -8,9 +8,45 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   const imgRef = useRef<HTMLImageElement>(null);
   const startX = useRef(0);
   const startW = useRef(0);
+  const pinchStartDist = useRef(0);
+  const pinchStartW = useRef(0);
   const clampWidth = useCallback((width: number) => {
     return Math.max(60, Math.min(width, 1400));
   }, []);
+
+  // Pinch-to-resize on mobile
+  useEffect(() => {
+    const el = imgRef.current;
+    if (!el) return;
+
+    function touchDist(touches: TouchList) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        pinchStartDist.current = touchDist(e.touches);
+        pinchStartW.current = node.attrs.width ?? el.offsetWidth ?? 400;
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        e.preventDefault(); // prevent viewport zoom — we handle pinch as image resize
+        const scale = touchDist(e.touches) / pinchStartDist.current;
+        updateAttributes({ width: clampWidth(Math.round(pinchStartW.current * scale)) });
+      }
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+    };
+  }, [node.attrs.width, updateAttributes, clampWidth]);
 
   const startResize = useCallback((e: React.PointerEvent, pos: string) => {
     e.preventDefault();
@@ -61,7 +97,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     borderRadius: 6,
     outline: selected ? '2px solid #3b82f6' : 'none',
     outlineOffset: 2,
-    touchAction: 'pan-x pan-y pinch-zoom', // override TipTap drag-handle's touch-action:none
+    touchAction: 'pan-x pan-y', // no pinch-zoom — we handle pinch ourselves to resize the image
   };
 
   return (
