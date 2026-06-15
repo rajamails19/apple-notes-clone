@@ -51,7 +51,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     marginLeft: marginLeft > 0 ? marginLeft : undefined,
     lineHeight: 0,
     userSelect: 'none',
-    touchAction: 'pan-y',
+    touchAction: 'pan-y pinch-zoom',
   };
 
   const imgStyle: React.CSSProperties = {
