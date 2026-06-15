@@ -399,7 +399,7 @@ export default function AppShell() {
           <div style={{
             position: 'absolute', inset: 0,
             display: mobilePanel === 'editor' ? 'flex' : 'none',
-            flexDirection: 'column', minHeight: 0, overflow: 'clip',
+            flexDirection: 'column', minHeight: 0, overflowX: 'hidden', overflowY: 'clip',
           }}>
             {/* TopBar inside editor panel so it renders after editor mounts */}
             <TopBar mobile />

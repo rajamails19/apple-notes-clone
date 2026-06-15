@@ -56,7 +56,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
 
   const imgStyle: React.CSSProperties = {
     width: node.attrs.width ? `${node.attrs.width}px` : 'auto',
-    maxWidth: '100%',
+    maxWidth: 'none',
     display: 'inline-block',
     borderRadius: 6,
     outline: selected ? '2px solid #3b82f6' : 'none',
