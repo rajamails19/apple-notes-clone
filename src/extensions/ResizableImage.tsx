@@ -28,7 +28,7 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     function onTouchStart(e: TouchEvent) {
       if (e.touches.length === 2) {
         pinchStartDist.current = touchDist(e.touches);
-        pinchStartW.current = node.attrs.width ?? el.offsetWidth ?? 400;
+        pinchStartW.current = node.attrs.width ?? (el ? el.offsetWidth : 400) ?? 400;
       }
     }
 
