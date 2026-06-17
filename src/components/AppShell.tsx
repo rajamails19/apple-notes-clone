@@ -133,17 +133,24 @@ export default function AppShell() {
     else setNotes([]);
   }, [selectedFolderId]);
 
+  // Persist last-opened folder + note whenever they change (covers desktop + mobile)
+  const { selectedNoteId } = useStore();
+  useEffect(() => {
+    if (selectedFolderId) localStorage.setItem('last-folder-id', selectedFolderId);
+  }, [selectedFolderId]);
+  useEffect(() => {
+    if (selectedNoteId) localStorage.setItem('last-note-id', selectedNoteId);
+  }, [selectedNoteId]);
+
   // On mobile: selecting a folder → go to notes panel
   const handleFolderSelect = useCallback((id: string) => {
     useStore.getState().setSelectedFolder(id);
-    localStorage.setItem('last-folder-id', id);
     if (isMobile) setMobilePanel('notes');
   }, [isMobile]);
 
   // On mobile: selecting a note → go to editor panel
   const handleNoteSelect = useCallback((id: string) => {
     useStore.getState().setSelectedNote(id);
-    localStorage.setItem('last-note-id', id);
     if (isMobile) setMobilePanel('editor');
   }, [isMobile]);
 
