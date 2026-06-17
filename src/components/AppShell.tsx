@@ -68,6 +68,7 @@ export default function AppShell() {
 
   const [folderW, setFolderW] = useState(220);
   const [notesW,  setNotesW]  = useState(300);
+  const isInitialLoad = useRef(true);
   const dragging = useRef<null | 'folder' | 'notes'>(null);
   const startX   = useRef(0);
   const startW   = useRef(0);
@@ -95,7 +96,11 @@ export default function AppShell() {
       .then((r) => r.json())
       .then((data: typeof folders) => {
         setFolders(data);
-        if (data.length > 0) useStore.getState().setSelectedFolder(data[0].id);
+        if (data.length > 0) {
+          const lastFolderId = localStorage.getItem('last-folder-id');
+          const restored = lastFolderId ? data.find((f) => f.id === lastFolderId) : null;
+          useStore.getState().setSelectedFolder(restored ? restored.id : data[0].id);
+        }
       });
     // Fetch initial trash count
     fetch('/api/notes?folderId=__recently_deleted__')
@@ -108,8 +113,19 @@ export default function AppShell() {
     const raw = await fetch(`/api/notes?folderId=${folderId}`).then((r) => r.json());
     const ns: typeof notes = Array.isArray(raw) ? raw : [];
     setNotes(ns);
-    if (ns.length > 0) setSelectedNote(ns[0].id);
-    else setSelectedNote(null);
+    if (ns.length > 0) {
+      // On first load, restore last-opened note; after that always pick first
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+        const lastNoteId = localStorage.getItem('last-note-id');
+        const restored = lastNoteId ? ns.find((n) => n.id === lastNoteId) : null;
+        setSelectedNote(restored ? restored.id : ns[0].id);
+      } else {
+        setSelectedNote(ns[0].id);
+      }
+    } else {
+      setSelectedNote(null);
+    }
   }, [setNotes, setSelectedNote]);
 
   useEffect(() => {
@@ -118,15 +134,16 @@ export default function AppShell() {
   }, [selectedFolderId]);
 
   // On mobile: selecting a folder → go to notes panel
-  const originalSetSelectedFolder = useStore.getState().setSelectedFolder;
   const handleFolderSelect = useCallback((id: string) => {
     useStore.getState().setSelectedFolder(id);
+    localStorage.setItem('last-folder-id', id);
     if (isMobile) setMobilePanel('notes');
   }, [isMobile]);
 
   // On mobile: selecting a note → go to editor panel
   const handleNoteSelect = useCallback((id: string) => {
     useStore.getState().setSelectedNote(id);
+    localStorage.setItem('last-note-id', id);
     if (isMobile) setMobilePanel('editor');
   }, [isMobile]);
 

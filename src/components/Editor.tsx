@@ -17,8 +17,10 @@ import { useSyncStatus } from '@/store/useSyncStatus';
 export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
   const { notes, selectedNoteId, updateNote } = useStore();
   const note = notes.find((n) => n.id === selectedNoteId) ?? null;
-  const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastNoteId = useRef<string | null>(null);
+  const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastNoteId  = useRef<string | null>(null);
+  const scrollRef   = useRef<HTMLDivElement>(null);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setEditor = useEditorStore((s) => s.setEditor);
   const editorRef = useRef<import('@tiptap/react').Editor | null>(null);
   const { show: showCtx } = useContextMenu();
@@ -99,12 +101,22 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
     };
   }, [editor, setEditor]);
 
-  // Sync content when switching notes
+  // Sync content + restore scroll when switching notes
   useEffect(() => {
     if (!editor || !note) return;
     if (lastNoteId.current === note.id) return;
     lastNoteId.current = note.id;
-    setTimeout(() => editor.commands.setContent(note.content || ''), 0);
+    localStorage.setItem('last-note-id', note.id);
+    setTimeout(() => {
+      editor.commands.setContent(note.content || '');
+      // Restore scroll position after content renders
+      setTimeout(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const saved = localStorage.getItem(`scroll-${note.id}`);
+        if (saved) el.scrollTop = parseInt(saved, 10);
+      }, 80);
+    }, 0);
   }, [note?.id]);
 
   // Editor area right-click menu
@@ -194,8 +206,17 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-editor)' }}>
       {!mobile && <EditorToolbar />}
       <div
+        ref={scrollRef}
         className="editor-scroll"
         style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto', paddingBottom: 80, WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', overscrollBehaviorX: 'auto', touchAction: 'pan-x pan-y pinch-zoom' } as React.CSSProperties}
+        onScroll={() => {
+          if (!note?.id) return;
+          if (scrollTimer.current) clearTimeout(scrollTimer.current);
+          scrollTimer.current = setTimeout(() => {
+            const el = scrollRef.current;
+            if (el) localStorage.setItem(`scroll-${note.id}`, String(el.scrollTop));
+          }, 300);
+        }}
         onContextMenu={handleEditorContextMenu}
       >
         {/* Title + date */}
