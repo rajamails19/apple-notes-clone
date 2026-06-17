@@ -73,8 +73,11 @@ export default function AppShell() {
   const startX   = useRef(0);
   const startW   = useRef(0);
 
-  // Mobile: which panel is currently shown
-  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('folders');
+  // Mobile: which panel is currently shown — restore last panel if a note was open
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(() => {
+    if (typeof window === 'undefined') return 'folders';
+    return (localStorage.getItem('last-mobile-panel') as MobilePanel) ?? 'folders';
+  });
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -133,7 +136,10 @@ export default function AppShell() {
     else setNotes([]);
   }, [selectedFolderId]);
 
-  // Persist last-opened folder + note whenever they change (covers desktop + mobile)
+  // Persist last-opened folder + note + mobile panel whenever they change
+  useEffect(() => {
+    localStorage.setItem('last-mobile-panel', mobilePanel);
+  }, [mobilePanel]);
   const { selectedNoteId } = useStore();
   useEffect(() => {
     if (selectedFolderId) localStorage.setItem('last-folder-id', selectedFolderId);
