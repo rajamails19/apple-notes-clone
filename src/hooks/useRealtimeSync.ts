@@ -8,8 +8,6 @@ import { mapNote, mapFolder } from '@/lib/supabase/types';
 export function useRealtimeSync() {
   const setFolders = useStore((s) => s.setFolders);
   const setNotes   = useStore((s) => s.setNotes);
-  const folders    = useStore((s) => s.folders);
-  const notes      = useStore((s) => s.notes);
 
   useEffect(() => {
     // Only subscribe when Supabase is configured

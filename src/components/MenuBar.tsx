@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from './ThemeProvider';
 import { useEditorStore } from '@/store/useEditorStore';
+import { useToast } from '@/store/useToast';
 
 interface MenuItem {
   label?: string;
@@ -73,10 +74,11 @@ function MenuDropdown({ label, items, open, onOpen, onClose }: {
 
 export default function MenuBar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
+  const showToast = useToast((s) => s.showToast);
   const getEditor = () => useEditorStore.getState().editor;
   const {
-    selectedFolderId, selectedNoteId, notes, folders,
+    selectedFolderId, selectedNoteId, notes,
     addNote, removeNote, addFolder, removeFolder,
     toggleFolderSidebar, toggleNotesSidebar,
     incrementFolderCount, decrementFolderCount,
@@ -90,35 +92,63 @@ export default function MenuBar() {
 
   async function newNote() {
     if (!selectedFolderId) return;
-    const note = await fetch('/api/notes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderId: selectedFolderId }),
-    }).then((r) => r.json());
-    addNote(note);
-    incrementFolderCount(selectedFolderId);
-    useStore.getState().setSelectedNote(note.id);
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: selectedFolderId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const note = await res.json();
+      addNote(note);
+      incrementFolderCount(selectedFolderId);
+      useStore.getState().setSelectedNote(note.id);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not create a new note.', 'error');
+    }
   }
 
   async function newFolder() {
-    const folder = await fetch('/api/folders', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'New Folder' }),
-    }).then((r) => r.json());
-    addFolder(folder);
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'New Folder' }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const folder = await res.json();
+      addFolder(folder);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not create a new folder.', 'error');
+    }
   }
 
   async function deleteNote() {
     if (!selectedNoteId) return;
     const note = notes.find((n) => n.id === selectedNoteId);
-    await fetch(`/api/notes/${selectedNoteId}`, { method: 'DELETE' });
-    if (note) decrementFolderCount(note.folderId);
-    removeNote(selectedNoteId);
+    try {
+      const res = await fetch(`/api/notes/${selectedNoteId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      if (note) decrementFolderCount(note.folderId);
+      removeNote(selectedNoteId);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not delete this note.', 'error');
+    }
   }
 
   async function deleteFolder() {
     if (!selectedFolderId) return;
-    await fetch(`/api/folders/${selectedFolderId}`, { method: 'DELETE' });
-    removeFolder(selectedFolderId);
+    const ok = window.confirm('Delete this folder and all notes inside it? This cannot be undone.');
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/folders/${selectedFolderId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      removeFolder(selectedFolderId);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not delete this folder.', 'error');
+    }
   }
 
   const ed = getEditor();
@@ -148,13 +178,20 @@ export default function MenuBar() {
           if (!selectedNoteId) return;
           const note = notes.find((n) => n.id === selectedNoteId);
           if (!note) return;
-          const dup = await fetch('/api/notes', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
-          }).then((r) => r.json());
-          addNote(dup);
-          incrementFolderCount(note.folderId);
-          useStore.getState().setSelectedNote(dup.id);
+          try {
+            const res = await fetch('/api/notes', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const dup = await res.json();
+            addNote(dup);
+            incrementFolderCount(note.folderId);
+            useStore.getState().setSelectedNote(dup.id);
+          } catch (error) {
+            console.error(error);
+            showToast('Could not duplicate this note.', 'error');
+          }
         }},
       ],
     },
@@ -184,7 +221,7 @@ export default function MenuBar() {
     },
     {
       label: 'Help', items: [
-        { label: 'About Notes', action: () => alert('Apple Notes Clone V2\nNext.js 15 · TipTap · SQLite') },
+        { label: 'About Notes', action: () => alert('Notes & Folders App\nNext.js · TipTap · Supabase') },
       ],
     },
   ];

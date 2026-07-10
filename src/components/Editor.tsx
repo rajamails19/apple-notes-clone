@@ -13,11 +13,13 @@ import { useStore } from '@/store/useStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useContextMenu } from '@/store/useContextMenu';
 import { useSyncStatus } from '@/store/useSyncStatus';
+import { useToast } from '@/store/useToast';
 
 export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
   const { notes, selectedNoteId, updateNote } = useStore();
   const note = notes.find((n) => n.id === selectedNoteId) ?? null;
-  const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleSaveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastNoteId  = useRef<string | null>(null);
   const scrollRef   = useRef<HTMLDivElement>(null);
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -25,24 +27,28 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
   const editorRef = useRef<import('@tiptap/react').Editor | null>(null);
   const { show: showCtx } = useContextMenu();
   const { setSyncing, setSaved, setError } = useSyncStatus();
+  const showToast = useToast((s) => s.showToast);
 
   const schedSave = useCallback((id: string, content: string) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (contentSaveTimer.current) clearTimeout(contentSaveTimer.current);
     setSyncing();
-    saveTimer.current = setTimeout(async () => {
+    contentSaveTimer.current = setTimeout(async () => {
       try {
-        await fetch(`/api/notes/${id}`, {
+        const res = await fetch(`/api/notes/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content }),
         });
+        if (!res.ok) throw new Error(await res.text());
         updateNote({ id, content, updatedAt: new Date().toISOString() });
         setSaved();
-      } catch {
+      } catch (error) {
+        console.error(error);
         setError();
+        showToast('Could not save note content.', 'error');
       }
     }, 500);
-  }, [updateNote, setSyncing, setSaved, setError]);
+  }, [updateNote, setSyncing, setSaved, setError, showToast]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -117,7 +123,18 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
         if (saved) el.scrollTop = parseInt(saved, 10);
       }, 80);
     }, 0);
-  }, [note?.id]);
+  }, [editor, note]);
+
+  // Mobile image insert via nav bar button
+  useEffect(() => {
+    function onMobileInsertImage(e: Event) {
+      const url = (e as CustomEvent<{ url: string }>).detail?.url;
+      const ed = editorRef.current;
+      if (url && ed) ed.chain().focus().insertContent({ type: 'image', attrs: { src: url } }).run();
+    }
+    window.addEventListener('mobile-insert-image', onMobileInsertImage);
+    return () => window.removeEventListener('mobile-insert-image', onMobileInsertImage);
+  }, []);
 
   // Editor area right-click menu
   function handleEditorContextMenu(e: React.MouseEvent) {
@@ -145,8 +162,15 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
             const fd = new FormData();
             fd.append('file', file); fd.append('noteId', note.id);
             fetch('/api/images', { method: 'POST', body: fd })
-              .then((r) => r.json())
-              .then((d) => { if (d.url && ed) ed.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); });
+              .then(async (r) => {
+                if (!r.ok) throw new Error(await r.text());
+                return r.json();
+              })
+              .then((d) => { if (d.url && ed) ed.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); })
+              .catch((error) => {
+                console.error(error);
+                showToast('Could not upload this image.', 'error');
+              });
           };
           inp.click();
         },
@@ -159,24 +183,40 @@ export default function NoteEditor({ mobile }: { mobile?: boolean } = {}) {
   async function uploadAndInsert(file: File, noteId: string, view: any) {
     const fd = new FormData();
     fd.append('file', file); fd.append('noteId', noteId);
-    const { url } = await fetch('/api/images', { method: 'POST', body: fd }).then((r) => r.json());
-    if (!url || !view) return;
-    const node = view.state.schema.nodes.image.create({ src: url });
-    view.dispatch(view.state.tr.replaceSelectionWith(node));
+    try {
+      const res = await fetch('/api/images', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const { url } = await res.json();
+      if (!url || !view) return;
+      const node = view.state.schema.nodes.image.create({ src: url });
+      view.dispatch(view.state.tr.replaceSelectionWith(node));
+    } catch (error) {
+      console.error(error);
+      showToast('Could not upload this image.', 'error');
+    }
   }
 
   async function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const title = e.target.value;
     if (!note) return;
     updateNote({ id: note.id, title });
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      await fetch(`/api/notes/${note.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
-      });
-      updateNote({ id: note.id, updatedAt: new Date().toISOString() });
+    if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current);
+    setSyncing();
+    titleSaveTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/notes/${note.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        updateNote({ id: note.id, updatedAt: new Date().toISOString() });
+        setSaved();
+      } catch (error) {
+        console.error(error);
+        setError();
+        showToast('Could not save the note title.', 'error');
+      }
     }, 500);
   }
 

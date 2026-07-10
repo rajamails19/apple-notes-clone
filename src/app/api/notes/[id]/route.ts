@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { mapNote } from '@/lib/supabase/types';
 
-const useSupabase = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const isSupabaseConfigured = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,6 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(mapNote(data));
   }
 
+  if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { getDb } = await import('@/lib/db');
   const note = getDb().prepare('SELECT * FROM notes WHERE id = ?').get(id);
   if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -27,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id }  = await params;
   const body    = await req.json();
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,6 +59,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   // Local-only
+  if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { getDb } = await import('@/lib/db');
   const db  = getDb();
   const now = new Date().toISOString();
@@ -83,7 +85,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const { id } = await params;
   const permanent = new URL(req.url).searchParams.get('permanent') === 'true';
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -102,6 +104,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ success: true });
   }
 
+  if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { getDb } = await import('@/lib/db');
   if (permanent) {
     getDb().prepare('DELETE FROM notes WHERE id = ?').run(id);

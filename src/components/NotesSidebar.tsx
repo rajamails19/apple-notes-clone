@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
+import { useToast } from '@/store/useToast';
 import { Note, VIRTUAL_FOLDER_ALL, VIRTUAL_FOLDER_TRASH } from '@/types';
 import GalleryNotes from './GalleryNotes';
 
@@ -20,13 +21,28 @@ function stripHtml(html: string | undefined | null) {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolean; onSelectNote?: (id: string) => void } = {}) {
+function EmptyState({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      color: 'var(--text-faint)', gap: 8, padding: 24,
+    }}>
+      <span style={{ fontSize: 36, opacity: 0.4 }}>{icon}</span>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', textAlign: 'center' }}>{title}</p>
+      {sub && <p style={{ margin: 0, fontSize: 12, color: 'var(--text-faint)', textAlign: 'center' }}>{sub}</p>}
+    </div>
+  );
+}
+
+export default function NotesSidebar({ onSelectNote }: { mobile?: boolean; onSelectNote?: (id: string) => void } = {}) {
   const {
     notes, selectedFolderId, selectedNoteId, searchQuery, folders, viewMode,
     setSelectedNote, setSearchQuery, addNote, removeNote,
-    incrementFolderCount, decrementFolderCount, pinNote, moveNote,
+    incrementFolderCount, pinNote, moveNote,
     trashNote, restoreNote, trashCount, setTrashCount,
   } = useStore();
+  const showToast = useToast((s) => s.showToast);
 
   const isTrashView = selectedFolderId === VIRTUAL_FOLDER_TRASH;
   const isAllView   = selectedFolderId === VIRTUAL_FOLDER_ALL;
@@ -36,7 +52,6 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
 
   const { show: showCtx } = useContextMenu();
   const searchRef = useRef<HTMLInputElement>(null);
-  const folder = folders.find((f) => f.id === selectedFolderId);
 
   const filtered = notes.filter((n) => {
     if (!searchQuery) return true;
@@ -54,7 +69,11 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folderId: selectedFolderId }),
     });
-    if (!res.ok) { console.error('Failed to create note', await res.text()); return; }
+    if (!res.ok) {
+      console.error('Failed to create note', await res.text());
+      showToast('Could not create a new note.', 'error');
+      return;
+    }
     const note = await res.json();
     if (!note?.id) return;
     addNote(note);
@@ -63,53 +82,90 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
   }
 
   async function handleDeleteNote(note: Note) {
-    // Soft-delete: move to Recently Deleted
-    await fetch(`/api/notes/${note.id}`, { method: 'DELETE' });
-    trashNote(note.id);
+    try {
+      const res = await fetch(`/api/notes/${note.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      trashNote(note.id);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not move this note to Recently Deleted.', 'error');
+    }
   }
 
   async function handlePermanentDelete(note: Note) {
-    await fetch(`/api/notes/${note.id}?permanent=true`, { method: 'DELETE' });
-    removeNote(note.id);
-    setTrashCount(Math.max(0, trashCount - 1));
+    const label = note.title?.trim() || 'this note';
+    if (!window.confirm(`Permanently delete "${label}"?\n\nThis cannot be undone.`)) return;
+
+    try {
+      const res = await fetch(`/api/notes/${note.id}?permanent=true`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      removeNote(note.id);
+      setTrashCount(Math.max(0, trashCount - 1));
+    } catch (error) {
+      console.error(error);
+      showToast('Could not permanently delete this note.', 'error');
+    }
   }
 
   async function handleRestoreNote(note: Note) {
-    await fetch(`/api/notes/${note.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trashed: 0 }),
-    });
-    restoreNote(note.id);
-    // Increment the note's original folder count
-    incrementFolderCount(note.folderId);
+    try {
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: 0 }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      restoreNote(note.id);
+      incrementFolderCount(note.folderId);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not restore this note.', 'error');
+    }
   }
 
   async function handleDuplicate(note: Note) {
-    const res = await fetch('/api/notes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
-    });
-    const dup = await res.json();
-    addNote(dup);
-    incrementFolderCount(note.folderId);
-    setSelectedNote(dup.id);
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const dup = await res.json();
+      addNote(dup);
+      incrementFolderCount(note.folderId);
+      setSelectedNote(dup.id);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not duplicate this note.', 'error');
+    }
   }
 
   async function handlePin(note: Note) {
     const next = !note.pinned;
-    await fetch(`/api/notes/${note.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pinned: next ? 1 : 0 }),
-    });
-    pinNote(note.id, next);
+    try {
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: next ? 1 : 0 }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      pinNote(note.id, next);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not update pin state.', 'error');
+    }
   }
 
   async function handleMove(note: Note, toFolderId: string) {
-    await fetch(`/api/notes/${note.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderId: toFolderId }),
-    });
-    moveNote(note.id, toFolderId);
+    try {
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: toFolderId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      moveNote(note.id, toFolderId);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not move this note.', 'error');
+    }
   }
 
   function buildNoteCtxMenu(note: Note) {
@@ -152,12 +208,18 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
   }
 
   async function handleMoveFromTrash(note: Note, toFolderId: string) {
-    await fetch(`/api/notes/${note.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trashed: 0, folderId: toFolderId }),
-    });
-    restoreNote(note.id);
-    incrementFolderCount(toFolderId);
+    try {
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: 0, folderId: toFolderId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      restoreNote(note.id);
+      incrementFolderCount(toFolderId);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not move this note out of Recently Deleted.', 'error');
+    }
   }
 
   function onNoteCtxMenu(e: React.MouseEvent, note: Note) {
@@ -165,20 +227,6 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
     const items = buildNoteCtxMenu(note);
     showCtx(e.clientX, e.clientY, items);
   }
-
-  // ── Empty states ─────────────────────────────────────────────────────────
-
-  const EmptyState = ({ icon, title, sub }: { icon: string; title: string; sub?: string }) => (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      color: 'var(--text-faint)', gap: 8, padding: 24,
-    }}>
-      <span style={{ fontSize: 36, opacity: 0.4 }}>{icon}</span>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', textAlign: 'center' }}>{title}</p>
-      {sub && <p style={{ margin: 0, fontSize: 12, color: 'var(--text-faint)', textAlign: 'center' }}>{sub}</p>}
-    </div>
-  );
 
   return (
     <div style={{
@@ -194,7 +242,7 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
           borderBottom: '1px solid var(--border-light)',
         }}>
           {/* View toggle (list / gallery) */}
-          {(['list', 'gallery'] as const).map((mode, i) => (
+          {(['list', 'gallery'] as const).map((mode) => (
             <button key={mode}
               onMouseDown={(e) => { e.preventDefault(); useStore.getState().setViewMode(mode); }}
               title={mode === 'list' ? 'List View' : 'Gallery View'}
@@ -356,8 +404,8 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
             {!isTrashView && pinnedNotes.length > 0 && (
               <>
                 <SectionLabel label="Pinned" />
-                {pinnedNotes.map((note, i) => (
-                  <NoteRow key={note.id ?? `pinned-${i}`} note={note} selected={note.id === selectedNoteId}
+                {pinnedNotes.map((note) => (
+                  <NoteRow key={note.id} note={note} selected={note.id === selectedNoteId}
                     onSelect={() => handleSelect(note.id)}
                     onContextMenu={(e) => onNoteCtxMenu(e, note)}
                     onDelete={() => handleDeleteNote(note)}
@@ -369,8 +417,8 @@ export default function NotesSidebar({ mobile, onSelectNote }: { mobile?: boolea
             )}
 
             {/* Regular notes (or all trash notes) */}
-            {(isTrashView ? filtered : regularNotes).map((note, i) => (
-              <NoteRow key={note.id ?? `note-${i}`} note={note} selected={note.id === selectedNoteId}
+            {(isTrashView ? filtered : regularNotes).map((note) => (
+              <NoteRow key={note.id} note={note} selected={note.id === selectedNoteId}
                 onSelect={() => handleSelect(note.id)}
                 onContextMenu={(e) => onNoteCtxMenu(e, note)}
                 onDelete={() => isTrashView ? handlePermanentDelete(note) : handleDeleteNote(note)}

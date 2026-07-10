@@ -8,6 +8,7 @@ import SyncStatus from './SyncStatus';
 import UserMenu from './auth/UserMenu';
 import type { Editor } from '@tiptap/react';
 import { FONT_SIZES, DEFAULT_SIZE, parsePxSize } from '@/extensions/FontSize';
+import { useToast } from '@/store/useToast';
 
 // ─── Toolbar icon button ──────────────────────────────────────────────────────
 function TBtn({
@@ -190,6 +191,7 @@ export default function EditorToolbar() {
   const { selectedNoteId } = useStore();
   const { theme, setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const showToast = useToast((s) => s.showToast);
 
   const handleImageInsert = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,10 +199,17 @@ export default function EditorToolbar() {
     const fd = new FormData();
     fd.append('file', file); fd.append('noteId', selectedNoteId);
     fetch('/api/images', { method: 'POST', body: fd })
-      .then((r) => r.json())
-      .then((d) => { if (d.url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); });
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      })
+      .then((d) => { if (d.url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); })
+      .catch((error) => {
+        console.error(error);
+        showToast('Could not upload this image.', 'error');
+      });
     e.target.value = '';
-  }, [editor, selectedNoteId]);
+  }, [editor, selectedNoteId, showToast]);
 
   return (
     <div style={{

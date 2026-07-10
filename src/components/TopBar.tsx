@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from './ThemeProvider';
 import { useEditorStore } from '@/store/useEditorStore';
+import { useToast } from '@/store/useToast';
 import type { Editor } from '@tiptap/react';
 import { FONT_SIZES, DEFAULT_SIZE, parsePxSize } from '@/extensions/FontSize';
 import { ViewMode } from '@/types';
@@ -302,24 +303,38 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
   } = useStore();
   const { theme, setTheme } = useTheme();
   const editor = useEditorStore((s) => s.editor);
+  const showToast = useToast((s) => s.showToast);
 
   async function newNote() {
     if (!selectedFolderId) return;
-    const note = await fetch('/api/notes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderId: selectedFolderId }),
-    }).then((r) => r.json());
-    addNote(note);
-    incrementFolderCount(selectedFolderId);
-    useStore.getState().setSelectedNote(note.id);
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: selectedFolderId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const note = await res.json();
+      addNote(note);
+      incrementFolderCount(selectedFolderId);
+      useStore.getState().setSelectedNote(note.id);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not create a new note.', 'error');
+    }
   }
 
   async function deleteNote() {
     if (!selectedNoteId) return;
     const note = notes.find((n) => n.id === selectedNoteId);
-    await fetch(`/api/notes/${selectedNoteId}`, { method: 'DELETE' });
-    if (note) decrementFolderCount(note.folderId);
-    removeNote(selectedNoteId);
+    try {
+      const res = await fetch(`/api/notes/${selectedNoteId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      if (note) decrementFolderCount(note.folderId);
+      removeNote(selectedNoteId);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not delete this note.', 'error');
+    }
   }
 
   const noFolder = !selectedFolderId;
@@ -412,8 +427,15 @@ export default function TopBar({ mobile }: { mobile?: boolean }) {
             fd.append('file', file);
             fd.append('noteId', selectedNoteId);
             fetch('/api/images', { method: 'POST', body: fd })
-              .then((r) => r.json())
-              .then((d) => { if (d.url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); });
+              .then(async (r) => {
+                if (!r.ok) throw new Error(await r.text());
+                return r.json();
+              })
+              .then((d) => { if (d.url) editor.chain().focus().insertContent({ type: 'image', attrs: { src: d.url } }).run(); })
+              .catch((error) => {
+                console.error(error);
+                showToast('Could not upload this image.', 'error');
+              });
             e.target.value = '';
           }}
         />

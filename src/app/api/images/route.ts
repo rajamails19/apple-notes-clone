@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { createClient } from '@/lib/supabase/server';
 
-const useSupabase = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const isSupabaseConfigured = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function POST(req: Request) {
   const formData = await req.formData();
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const id       = uuidv4();
   const filename = `${id}${ext}`;
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {

@@ -14,10 +14,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
-    const saved = (localStorage.getItem('theme') as Theme) ?? 'light';
-    setThemeState(saved);
-    document.documentElement.classList.toggle('dark', saved === 'dark');
+    const frame = requestAnimationFrame(() => {
+      const savedTheme = localStorage.getItem('theme') as Theme | null;
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        setThemeState(savedTheme);
+        document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+      }
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);

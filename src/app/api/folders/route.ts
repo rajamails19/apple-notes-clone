@@ -3,22 +3,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/lib/supabase/server';
 import { mapFolder } from '@/lib/supabase/types';
 
-const useSupabase = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const isSupabaseConfigured = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function GET() {
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: folders, error } = await supabase
-      .from('folders')
-      .select('*, notes!inner(count)')
-      .eq('user_id', user.id)
-      .eq('notes.trashed', false)
-      .order('created_at', { ascending: true });
-
-    // Fallback: if the inner join filtered out folders with 0 notes, use a plain select
+    // Use a plain folder query so empty folders are included.
     const { data: allFolders, error: allError } = await supabase
       .from('folders')
       .select('*')
@@ -65,7 +58,7 @@ export async function POST(req: Request) {
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

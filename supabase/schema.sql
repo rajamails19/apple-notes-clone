@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- Apple Notes Clone — Supabase Schema
+-- Notes & Folders App — Supabase Schema
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ═══════════════════════════════════════════════════════════════════════════
 

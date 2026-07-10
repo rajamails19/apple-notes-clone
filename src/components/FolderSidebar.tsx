@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import { useContextMenu } from '@/store/useContextMenu';
+import { useToast } from '@/store/useToast';
 import { Folder, VIRTUAL_FOLDER_ALL, VIRTUAL_FOLDER_TRASH } from '@/types';
 
 export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boolean; onSelectFolder?: (id: string) => void } = {}) {
@@ -12,35 +13,64 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
   const [editValue, setEditValue]   = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const { show: showCtx } = useContextMenu();
+  const showToast = useToast((s) => s.showToast);
 
   useEffect(() => { if (editingId && inputRef.current) inputRef.current.focus(); }, [editingId]);
 
   async function createFolder() {
-    const res = await fetch('/api/folders', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'New Folder' }),
-    });
-    const folder = await res.json();
-    addFolder(folder);
-    setEditingId(folder.id);
-    setEditValue(folder.name);
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'New Folder' }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const folder = await res.json();
+      addFolder(folder);
+      setEditingId(folder.id);
+      setEditValue(folder.name);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not create a new folder.', 'error');
+    }
   }
 
   async function renameFolder(id: string) {
     if (!editValue.trim()) { setEditingId(null); return; }
-    const res = await fetch(`/api/folders/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editValue }),
-    });
-    updateFolder(await res.json());
-    setEditingId(null);
-    // Stay on this folder so user can start adding notes immediately
-    useStore.getState().setSelectedFolder(id);
+    try {
+      const res = await fetch(`/api/folders/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editValue }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      updateFolder(await res.json());
+      setEditingId(null);
+      // Stay on this folder so user can start adding notes immediately
+      useStore.getState().setSelectedFolder(id);
+    } catch (error) {
+      console.error(error);
+      showToast('Could not rename this folder.', 'error');
+    }
   }
 
   async function deleteFolder(id: string) {
-    await fetch(`/api/folders/${id}`, { method: 'DELETE' });
-    removeFolder(id);
+    const folder = folders.find((f) => f.id === id);
+    const count = folder?.noteCount ?? 0;
+    const ok = window.confirm(
+      count > 0
+        ? `Delete "${folder?.name ?? 'this folder'}" and its ${count} note${count === 1 ? '' : 's'}? This cannot be undone.`
+        : `Delete "${folder?.name ?? 'this folder'}"? This cannot be undone.`
+    );
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/folders/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+      removeFolder(id);
+      showToast('Folder deleted.', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Could not delete this folder.', 'error');
+    }
   }
 
   function handleRightClick(e: React.MouseEvent, folder: Folder) {
@@ -49,16 +79,22 @@ export default function FolderSidebar({ mobile, onSelectFolder }: { mobile?: boo
       {
         label: 'New Note', icon: '✏️',
         action: async () => {
-          setSelectedFolder(folder.id);
-          const { addNote, incrementFolderCount } = useStore.getState();
-          const res = await fetch('/api/notes', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folderId: folder.id }),
-          });
-          const note = await res.json();
-          addNote(note);
-          incrementFolderCount(folder.id);
-          useStore.getState().setSelectedNote(note.id);
+          try {
+            setSelectedFolder(folder.id);
+            const { addNote, incrementFolderCount } = useStore.getState();
+            const res = await fetch('/api/notes', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ folderId: folder.id }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const note = await res.json();
+            addNote(note);
+            incrementFolderCount(folder.id);
+            useStore.getState().setSelectedNote(note.id);
+          } catch (error) {
+            console.error(error);
+            showToast('Could not create a new note.', 'error');
+          }
         },
       },
       {

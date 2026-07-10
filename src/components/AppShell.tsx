@@ -8,8 +8,10 @@ import FolderSidebar from './FolderSidebar';
 import NotesSidebar from './NotesSidebar';
 import NoteEditor from './Editor';
 import ContextMenu from './ContextMenu';
+import Toasts from './Toasts';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/store/useToast';
 
 const MIN_FOLDER = 160;
 const MIN_NOTES  = 200;
@@ -51,10 +53,11 @@ export default function AppShell() {
     setFolders, setNotes, selectedFolderId,
     showFolderSidebar, showNotesSidebar,
     addNote, setSelectedNote,
-    incrementFolderCount, decrementFolderCount,
+    incrementFolderCount,
     notes, folders,
     setTrashCount,
   } = useStore();
+  const showToast = useToast((s) => s.showToast);
 
   const [isGuest, setIsGuest] = useState(false);
   useEffect(() => {
@@ -87,33 +90,62 @@ export default function AppShell() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Hydrate widths from localStorage after mount
+  // Hydrate widths from localStorage after mount to avoid server/client mismatch.
   useEffect(() => {
-    setFolderW(loadW('pane-folder', 220));
-    setNotesW(loadW('pane-notes', 300));
+    const frame = requestAnimationFrame(() => {
+      setFolderW(loadW('pane-folder', 220));
+      setNotesW(loadW('pane-notes', 300));
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Load folders on mount + trash count
   useEffect(() => {
-    fetch('/api/folders')
-      .then((r) => r.json())
-      .then((data: typeof folders) => {
+    async function loadInitialData() {
+      try {
+        const foldersRes = await fetch('/api/folders');
+        if (foldersRes.status === 401) {
+          showToast('Please sign in or continue as guest to open your notes.', 'error');
+          window.location.href = '/login';
+          return;
+        }
+        if (!foldersRes.ok) throw new Error('Unable to load folders.');
+        const data = await foldersRes.json() as typeof folders;
+        if (!Array.isArray(data)) throw new Error('Folders response was not valid.');
         setFolders(data);
         if (data.length > 0) {
           const lastFolderId = localStorage.getItem('last-folder-id');
           const restored = lastFolderId ? data.find((f) => f.id === lastFolderId) : null;
           useStore.getState().setSelectedFolder(restored ? restored.id : data[0].id);
         }
-      });
-    // Fetch initial trash count
-    fetch('/api/notes?folderId=__recently_deleted__')
-      .then((r) => r.json())
-      .then((data: unknown[]) => setTrashCount(Array.isArray(data) ? data.length : 0));
-  }, []);
+
+        const trashRes = await fetch('/api/notes?folderId=__recently_deleted__');
+        if (trashRes.status === 401) return;
+        if (!trashRes.ok) throw new Error('Unable to load recently deleted notes.');
+        const trash = await trashRes.json() as unknown[];
+        setTrashCount(Array.isArray(trash) ? trash.length : 0);
+      } catch (error) {
+        console.error(error);
+        showToast('Could not load your notes. Please refresh or sign in again.', 'error');
+      }
+    }
+
+    loadInitialData();
+  }, [setFolders, setTrashCount, showToast]);
 
   // Load notes when folder changes
   const loadNotes = useCallback(async (folderId: string) => {
-    const raw = await fetch(`/api/notes?folderId=${folderId}`).then((r) => r.json());
+    const res = await fetch(`/api/notes?folderId=${folderId}`);
+    if (res.status === 401) {
+      showToast('Your session expired. Please sign in again.', 'error');
+      window.location.href = '/login';
+      return;
+    }
+    if (!res.ok) {
+      showToast('Could not load notes for this folder.', 'error');
+      return;
+    }
+    const raw = await res.json();
     const ns: typeof notes = Array.isArray(raw) ? raw : [];
     setNotes(ns);
     if (ns.length > 0) {
@@ -129,12 +161,12 @@ export default function AppShell() {
     } else {
       setSelectedNote(null);
     }
-  }, [setNotes, setSelectedNote]);
+  }, [setNotes, setSelectedNote, showToast]);
 
   useEffect(() => {
     if (selectedFolderId) loadNotes(selectedFolderId);
     else setNotes([]);
-  }, [selectedFolderId]);
+  }, [loadNotes, selectedFolderId, setNotes]);
 
   // Persist last-opened folder + note + mobile panel whenever they change
   useEffect(() => {
@@ -164,15 +196,22 @@ export default function AppShell() {
   const handleNewNote = useCallback(async () => {
     const fid = useStore.getState().selectedFolderId;
     if (!fid) return;
-    const note = await fetch('/api/notes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderId: fid }),
-    }).then((r) => r.json());
-    addNote(note);
-    incrementFolderCount(fid);
-    setSelectedNote(note.id);
-    if (isMobile) setMobilePanel('editor');
-  }, [isMobile, addNote, incrementFolderCount, setSelectedNote]);
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: fid }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const note = await res.json();
+      addNote(note);
+      incrementFolderCount(fid);
+      setSelectedNote(note.id);
+      if (isMobile) setMobilePanel('editor');
+    } catch (error) {
+      console.error(error);
+      showToast('Could not create a new note.', 'error');
+    }
+  }, [isMobile, addNote, incrementFolderCount, setSelectedNote, showToast]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -185,24 +224,38 @@ export default function AppShell() {
       }
       if (meta && e.shiftKey && e.key === 'n') {
         e.preventDefault();
-        const folder = await fetch('/api/folders', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'New Folder' }),
-        }).then((r) => r.json());
-        useStore.getState().addFolder(folder);
+        try {
+          const res = await fetch('/api/folders', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'New Folder' }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const folder = await res.json();
+          useStore.getState().addFolder(folder);
+        } catch (error) {
+          console.error(error);
+          showToast('Could not create a new folder.', 'error');
+        }
       }
       if (meta && e.key === 'd') {
         e.preventDefault();
         const { selectedNoteId, notes: ns, addNote: an, incrementFolderCount: inc } = useStore.getState();
         const note = ns.find((n) => n.id === selectedNoteId);
         if (!note) return;
-        const dup = await fetch('/api/notes', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
-        }).then((r) => r.json());
-        an(dup);
-        inc(note.folderId);
-        setSelectedNote(dup.id);
+        try {
+          const res = await fetch('/api/notes', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderId: note.folderId, title: `${note.title} — Copy`, content: note.content }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const dup = await res.json();
+          an(dup);
+          inc(note.folderId);
+          setSelectedNote(dup.id);
+        } catch (error) {
+          console.error(error);
+          showToast('Could not duplicate this note.', 'error');
+        }
       }
       if (meta && e.key === 'f') {
         e.preventDefault();
@@ -218,19 +271,22 @@ export default function AppShell() {
         if (!n) return;
         // If already in trash, permanently delete; otherwise soft-delete
         if (sfid === '__recently_deleted__') {
-          await fetch(`/api/notes/${nid}?permanent=true`, { method: 'DELETE' });
+          const res = await fetch(`/api/notes/${nid}?permanent=true`, { method: 'DELETE' });
+          if (!res.ok) throw new Error(await res.text());
           useStore.getState().restoreNote(nid); // removes from trash view
           useStore.getState().setTrashCount(Math.max(0, useStore.getState().trashCount - 1));
         } else {
-          await fetch(`/api/notes/${nid}`, { method: 'DELETE' });
+          const res = await fetch(`/api/notes/${nid}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error(await res.text());
           trashNote(nid);
         }
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleNewNote]);
+  }, [handleNewNote, setSelectedNote, showToast]);
 
+  /* eslint-disable react-hooks/refs */
   // Panel drag (desktop only)
   const onMouseDownDrag = (pane: 'folder' | 'notes') => (e: React.MouseEvent) => {
     dragging.current = pane;
@@ -239,6 +295,7 @@ export default function AppShell() {
     document.body.style.cursor      = 'col-resize';
     document.body.style.userSelect  = 'none';
   };
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -318,6 +375,42 @@ export default function AppShell() {
         {mobilePanel === 'editor'  && (selectedNote?.title   || 'Note')}
       </span>
 
+      {/* Image upload button - editor panel only */}
+      {mobilePanel === 'editor' && (
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 36, cursor: 'pointer' }}>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              const noteId = useStore.getState().selectedNoteId;
+              e.target.value = '';
+              if (!file || !noteId) return;
+              const fd = new FormData();
+              fd.append('file', file);
+              fd.append('noteId', noteId);
+              try {
+                const res = await fetch('/api/images', { method: 'POST', body: fd });
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+                if (data.url) {
+                  window.dispatchEvent(new CustomEvent('mobile-insert-image', { detail: { url: data.url } }));
+                }
+              } catch (error) {
+                console.error(error);
+                showToast('Could not upload this image.', 'error');
+              }
+            }}
+          />
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="var(--accent)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="16" height="12" rx="2" />
+            <circle cx="7" cy="8.5" r="1.5" />
+            <path d="M2 14l4-4 3 3 3-3 4 4" />
+          </svg>
+        </label>
+      )}
+
       {/* New note button (notes + editor panels) */}
       {mobilePanel !== 'folders' && (
         <button
@@ -390,6 +483,7 @@ export default function AppShell() {
           </div>
         </div>
         <ContextMenu />
+        <Toasts />
       </>
     );
   }
@@ -438,6 +532,7 @@ export default function AppShell() {
         </div>
       </div>
       <ContextMenu />
+      <Toasts />
     </>
   );
 }

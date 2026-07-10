@@ -3,8 +3,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Notes",
-  description: "Apple Notes Clone",
+  title: "Notes & Folders App",
+  description: "A focused notes and folders app for organizing ideas.",
 };
 
 export const viewport: Viewport = {

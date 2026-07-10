@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { mapNote } from '@/lib/supabase/types';
 import { VIRTUAL_FOLDER_ALL, VIRTUAL_FOLDER_TRASH } from '@/types';
 
-const useSupabase = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const isSupabaseConfigured = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const isAll   = folderId === VIRTUAL_FOLDER_ALL;
   const isTrash = folderId === VIRTUAL_FOLDER_TRASH;
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     return NextResponse.json((data ?? []).map(mapNote));
   }
 
+  if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { getDb } = await import('@/lib/db');
   const db = getDb();
   let sql = 'SELECT * FROM notes WHERE 1=1';
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
   const { folderId, title = 'New Note', content = '', pinned = 0 } = await req.json();
   if (!folderId) return NextResponse.json({ error: 'folderId required' }, { status: 400 });
 
-  if (useSupabase()) {
+  if (isSupabaseConfigured()) {
     const supabase = await createClient() as any; // eslint-disable-line
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
     return NextResponse.json(mapNote(data));
   }
 
+  if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { getDb } = await import('@/lib/db');
   const db = getDb();
   const now = new Date().toISOString();

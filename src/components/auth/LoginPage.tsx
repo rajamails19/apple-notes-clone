@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useMemo, FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -8,24 +8,24 @@ export default function LoginPage() {
   const searchParams  = useSearchParams();
   const showForm      = searchParams.get('mode') === 'signin';
 
-  const [mode, setMode]         = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
-  const [message, setMessage]   = useState('');
+  const [mode, setMode]           = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [loading, setLoading]     = useState(!showForm);
+  const [error, setError]         = useState('');
+  const [message, setMessage]     = useState('');
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // If no ?mode=signin, auto-sign in as guest and land on the app
   useEffect(() => {
     if (showForm) return;
-    setLoading(true);
-    supabase.auth.signInAnonymously().then(({ error }) => {
+    const { auth } = supabase;
+    auth.signInAnonymously().then(({ error }) => {
       if (error) { setError(error.message); setLoading(false); }
       else window.location.href = '/';
     });
-  }, [showForm]);
+  }, [showForm, supabase]);
 
   async function handleGoogle() {
     setLoading(true); setError('');
@@ -34,6 +34,18 @@ export default function LoginPage() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) { setError(error.message); setLoading(false); }
+  }
+
+  async function handleReset(e: FormEvent) {
+    e.preventDefault();
+    if (!email) { setError('Enter your email address above first.'); return; }
+    setLoading(true); setError(''); setMessage('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    });
+    if (error) setError(error.message);
+    else setMessage('Password reset link sent — check your email.');
+    setLoading(false);
   }
 
   async function handleEmail(e: FormEvent) {
@@ -160,13 +172,24 @@ export default function LoginPage() {
             onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px rgba(232,160,32,0.15)'; }}
             onBlur={(e)  => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';  (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
           />
-          <input
-            type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password" required minLength={6}
-            style={inputStyle}
-            onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px rgba(232,160,32,0.15)'; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';  (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
-          />
+          <div>
+            <input
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password" required minLength={6}
+              style={inputStyle}
+              onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px rgba(232,160,32,0.15)'; }}
+              onBlur={(e)  => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';  (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
+            />
+            {mode === 'signin' && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); handleReset(e as unknown as FormEvent); }}
+                style={{ background: 'none', border: 'none', padding: '4px 0 0', fontSize: 12, color: 'var(--accent)', cursor: 'pointer', display: 'block', textAlign: 'right', width: '100%' }}
+              >
+                Forgot password?
+              </button>
+            )}
+          </div>
 
           {error   && <p style={{ margin: 0, fontSize: 12, color: '#ef4444', textAlign: 'center' }}>{error}</p>}
           {message && <p style={{ margin: 0, fontSize: 12, color: '#22c55e', textAlign: 'center' }}>{message}</p>}
